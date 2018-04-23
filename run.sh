@@ -1,10 +1,11 @@
 #/bin/bash
-# ./run.sh dataset train attack eval grid num_dx eps epoch_for_eva
+# set -x
+# ./run.sh DATASET train attack eval grid num_dx eps epoch_for_eval session_name
 
-SESSION_NAME="neural_fingerprinting"
+SESSION_NAME=$9
 
-DATADIR=/tmp/stephan/data/$1
-BASE_LOGDIR=/tmp/stephan/logs/$SESSION_NAME/$1
+DATADIR=/tmp/data/$1
+BASE_LOGDIR=/tmp/logs/$SESSION_NAME/$1
 mkdir -p $BASE_LOGDIR
 
 # Define a grid of hyperparameters or use from flags
@@ -23,15 +24,16 @@ NUM_EPOCHS=3
 EPOCHS="2 3"
 fi
 
+
 if [ "$1" = "cifar" ]; then
 NUM_EPOCHS=50
 fi
 
 # Loop over grid of hyperparameters
-for eps in $ALL_EPS; do
-for numdx in $ALL_NUMDX; do
+for EPS in $ALL_EPS; do
+for NUMDX in $ALL_NUMDX; do
 
-LOGDIR=$BASE_LOGDIR/eps_$EPS/numdx_$NUMDX
+LOGDIR=$BASE_LOGDIR/eps_$EPS/NUMDX_$numdx
 mkdir -p $LOGDIR
 mkdir -p $LOGDIR/ckpt
 mkdir -p $LOGDIR/train
@@ -45,7 +47,7 @@ python $1/train_fingerprint.py \
 --batch-size 128 \
 --test-batch-size 128 \
 --epochs $NUM_EPOCHS \
---lr 0.01 \
+--lr 0.001 \
 --momentum 0.9 \
 --seed 0 \
 --log-interval 10 \
@@ -60,20 +62,21 @@ fi
 
 
 if [ "$1" = "cifar" ] && [ $5 = "nogrid" ]; then
-EPOCH_FILE=$LOGDIR"/termination_epoch"
-echo $EPOCH_FILE
+epoch_file=$LOGDIR"/termination_epoch"
+echo $epoch_file
 while IFS= read -r var
 do
-  EPOCHS=$VAR
-done < "$EPOCH_FILE"
-echo $EPOCHS":Number of epochs run"
+  EPOCHS=$var
+done < "$epoch_file"
+echo $epochs":Number of epochs run"
 fi
 
 
 for EPOCH in $EPOCHS; do
 
-ADV_EX_DIR=$LOGDIR/adv_examples/epoch_$EPOCH
+ADV_EX_DIR=$LOGDIR/adv_examples/epoch_$epoch
 mkdir -p $ADV_EX_DIR
+
 
 # Generate attacks
 if [ "$3" = "attack" ]; then
@@ -91,6 +94,8 @@ done
 
 fi
 
+
+# Evaluate fingerprint perf on adversarial examples
 # Evaluate fingerprint perf on adversarial examples
 if [ "$4" = "eval" ]; then
 
@@ -113,9 +118,16 @@ python $1/eval_fingerprint.py \
 --num-dx=$NUMDX \
 --num-class=10 \
 --name="$1" \
+--tau $tau
+# --no-cuda
+# --verbose
+# --debug
 
 fi
 
+
 done
+
+
 done
 done
