@@ -2,7 +2,7 @@
 # set -x
 # ./run.sh DATASET train attack eval grid num_dx eps epoch_for_eval session_name
 
-SESSION_NAME=$9
+SESSION_NAME="neural_fingerprint"
 
 DATADIR=/tmp/data/$1
 BASE_LOGDIR=/tmp/logs/$SESSION_NAME/$1
