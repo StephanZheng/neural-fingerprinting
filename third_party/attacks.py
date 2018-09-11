@@ -92,6 +92,17 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
         cw_attack = CarliniLID(sess, model, image_size, num_channels, num_labels, batch_size=batch_size)
         X_adv = cw_attack.attack(X, Y)
 
+    elif attack == 'spsa':
+        # C&W attack to break LID detector
+        print('Crafting %s examples. Using Cleverhans' % attack)
+        image_size = ATTACK_PARAMS[dataset]['image_size']
+        num_channels = ATTACK_PARAMS[dataset]['num_channels']
+        num_labels = ATTACK_PARAMS[dataset]['num_labels']
+        
+
+        X_adv = None
+
+
     _, acc = model.evaluate(X_adv, Y, batch_size=batch_size, verbose=0)
     print("Model accuracy on the adversarial test set: %0.2f%%" % (100.0 * acc))
     _, acc = model.evaluate(X, Y, batch_size=batch_size, verbose=0)
