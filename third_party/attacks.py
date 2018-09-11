@@ -101,11 +101,11 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
         
         spsa = SPSAAdam(model, back='tf', sess=sess)
         
-        adv_inputs = adv_inputs.reshape(
-            (source_samples * nb_classes, img_rows, img_cols, nchannels))
-        adv_ys = np.array([one_hot] * source_samples,
-                          dtype=np.float32).reshape((source_samples *
-                                                     nb_classes, nb_classes))
+        # From the Cleverhans example
+        # adv_inputs = adv_inputs.reshape(
+            # (source_samples * nb_classes, img_rows, img_cols, nchannels))
+        adv_inputs = X 
+
         spsa_params = {
             "batch_size": batch_size,
             'num_steps': None,
