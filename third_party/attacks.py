@@ -99,8 +99,21 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
         num_channels = ATTACK_PARAMS[dataset]['num_channels']
         num_labels = ATTACK_PARAMS[dataset]['num_labels']
         
-
-        X_adv = None
+        spsa = SPSAAdam(model, back='tf', sess=sess)
+        
+        adv_inputs = adv_inputs.reshape(
+            (source_samples * nb_classes, img_rows, img_cols, nchannels))
+        adv_ys = np.array([one_hot] * source_samples,
+                          dtype=np.float32).reshape((source_samples *
+                                                     nb_classes, nb_classes))
+        spsa_params = {
+            "batch_size": batch_size,
+            'num_steps': None,
+            'spsa_iters': 1,
+            'early_stop_loss_threshold': None,
+            'is_targeted': False,
+        }
+        X_adv = spsa.generate_np(adv_inputs, **spsa_params)
 
 
     _, acc = model.evaluate(X_adv, Y, batch_size=batch_size, verbose=0)
