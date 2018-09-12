@@ -11,7 +11,7 @@ import sys
 import tensorflow as tf
 import numpy as np
 from tqdm import tqdm
-from third_party.cleverhans.utils import other_classes
+from cleverhans.utils import other_classes
 import keras.backend as K
 K.set_image_data_format('channels_first')
 from third_party.lid_adversarial_subspace_detection.util import lid_adv_term

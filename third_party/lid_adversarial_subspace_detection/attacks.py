@@ -7,10 +7,12 @@ import numpy as np
 import tensorflow as tf
 from tqdm import tqdm
 from six.moves import xrange
-
-from third_party.cleverhans.utils import other_classes
-from third_party.cleverhans.utils_tf import batch_eval, model_argmax
-from third_party.cleverhans.attacks_tf import (jacobian_graph, jacobian,
+import sys
+sys.path.append('../../.')
+from cleverhans.utils import other_classes
+from cleverhans.utils_tf import model_argmax
+from cleverhans.evaluation import batch_eval
+from cleverhans.attacks_tf import (jacobian_graph, jacobian,
                                    apply_perturbations, saliency_map)
 import keras.backend as K
 
@@ -188,7 +190,6 @@ def fast_gradient_sign_method(sess, model, X, Y, eps, clip_min=None,
         [X, Y], feed={K.learning_phase(): 0},
         args={'batch_size': batch_size}
     )
-
     return X_adv
 
 

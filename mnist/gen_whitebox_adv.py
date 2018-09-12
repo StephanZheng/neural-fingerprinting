@@ -10,6 +10,7 @@ from nn_transfer import transfer, util
 import torch.nn.functional as F
 import sys
 import os.path
+import warnings
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir))
 from third_party.attacks import craft_one_type
 import json
@@ -24,7 +25,8 @@ from tf_model import Model
 from pgd_cw_whitebox import LinfPGDAttack
 import dill as pickle
 from model import CW_Net as Net
-sys.path.insert(0, './mnist/')
+sys.path.insert(0, './mnist')
+sys.path.append('..')
 from third_party.lid_adversarial_subspace_detection.util import (get_data, cross_entropy) # ,get_noisy_samples)
 from keras import backend as K
 from keras.layers import Activation

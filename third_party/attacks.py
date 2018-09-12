@@ -10,10 +10,10 @@ import keras.backend as K
 K.set_image_data_format('channels_first')
 from keras.models import load_model
 import dill as pickle
-# from third_party.lid_adversarial_subspace_detection.util import (get_data, get_model, cross_entropy) # , get_noisy_samples)
-# from third_party.lid_adversarial_subspace_detection.attacks import (fast_gradient_sign_method, basic_iterative_method,
-#                          saliency_map_method)
-# from third_party.lid_adversarial_subspace_detection.cw_attacks import CarliniL2, CarliniLID
+from third_party.lid_adversarial_subspace_detection.util import (get_data, get_model, cross_entropy) # , get_noisy_samples)
+from third_party.lid_adversarial_subspace_detection.attacks import (fast_gradient_sign_method, basic_iterative_method,
+                          saliency_map_method)
+from third_party.lid_adversarial_subspace_detection.cw_attacks import CarliniL2, CarliniFP
 
 # FGSM & BIM attack parameters that were chosen
 ATTACK_PARAMS = {
@@ -127,13 +127,7 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
     pickle.dump({"adv_input":X_adv,"adv_labels":Y},f)
     f.close()
 
-    X_nsy = get_noisy_samples(X, X_adv, dataset, attack)
-    _, acc = model.evaluate(X_nsy, Y, batch_size=batch_size, verbose=0)
     print("Model accuracy on the test set: %0.2f%%" % (100.0 * acc))
-
-    f = open(os.path.join(log_path,'Noisy_%s_%s.p' % (dataset, attack)),'w')
-    pickle.dump({"adv_input":X_nsy,"adv_labels":Y},f)
-    f.close()
 
     l2_diff = np.linalg.norm(
         X_adv.reshape((len(X), -1)) -

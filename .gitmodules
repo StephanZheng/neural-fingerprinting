@@ -1,3 +1,0 @@
-[submodule "third_party/cleverhans"]
-	path = third_party/cleverhans
-	url = https://github.com/tensorflow/cleverhans

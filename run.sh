@@ -20,8 +20,8 @@ EPOCHS=$8
 fi
 
 if [ "$1" = "mnist" ]; then
-NUM_EPOCHS=3
-EPOCHS="2 3"
+NUM_EPOCHS=2
+EPOCHS="2"
 fi
 
 
@@ -81,7 +81,7 @@ mkdir -p $ADV_EX_DIR
 # Generate attacks
 if [ "$3" = "attack" ]; then
 
-for ATCK in 'spsa'; do #  'all'; do
+for ATCK in 'fgsm'; do #  'all'; do
 # Write out the different attacks, use 'all' to generate all attacks for same random subset of test
 # For now copy paste this list into eval_fingerprint :) Will figure out a fix later
 
