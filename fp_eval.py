@@ -361,7 +361,7 @@ def get_pr_wrapper(results, pos_names, neg_names, reject_thresholds, args):
             rates = get_rates(tau, args, tmp_results,
                 pos_names=pos_names, neg_names=neg_names)
 
-            if not (rates["prec"] < 1e-10 && rates["recall"] < 1e-10):
+            if not (rates["prec"] < 1e-10 and rates["recall"] < 1e-10):
                 pr_results[tau] = rates
 
         pr_auc = get_pr_auc(pr_results, args, plot=True, plot_name="{}-{}-{}".format(_type, "-".join(pos_names), "-".join(neg_names)))

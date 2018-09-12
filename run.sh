@@ -118,7 +118,6 @@ python $1/eval_fingerprint.py \
 --num-dx=$NUMDX \
 --num-class=10 \
 --name="$1" \
---tau $tau
 # --no-cuda
 # --verbose
 # --debug

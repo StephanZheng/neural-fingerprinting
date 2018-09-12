@@ -54,7 +54,7 @@ parser.add_argument('--data-dir', type=str)
 parser.add_argument('--eps', type=float, default=0.1)
 parser.add_argument('--num-dx', type=int, default=5)
 parser.add_argument('--num-class', type=int, default=10)
-parser.add_argument('--tau', type=str, default="0.1,0.2")
+#parser.add_argument('--tau', type=str, default="0.1,0.2")
 parser.add_argument('--name', default="dataset-name")
 
 util.add_boolean_argument(parser, "verbose", default=False)
@@ -100,19 +100,6 @@ for advs in list_advs:
             batch_size=args.batch_size, shuffle=False, **kwargs)
     list_adv_loader.append(adv_loader)
 
-
-# Load noise injected data
-list_noisy_names=[]
-list_noisy_loader=[]
-for advs in list_advs:
-    list_noisy_names.append('noisy_'+advs)
-    attack_file = os.path.join(args.adv_ex_dir, 'Noisy_%s_%s.p' % (dataset, advs))
-    adv_loader= torch.utils.data.DataLoader(
-            custom_datasets.Adv(filename=attack_file, transp=True),
-            batch_size=args.batch_size, shuffle=False, **kwargs)
-    list_noisy_loader.append(adv_loader)
-
-
 from model import CW_Net as Net
 #from small_model import Very_Small_Net as Net
 
@@ -137,10 +124,9 @@ fp.dys = fixed_dys
 
 loaders = [test_loader]
 loaders.extend(list_adv_loader)
-loaders.extend(list_noisy_loader)
+
 names = ["test"]
 names.extend(list_advs)
-names.extend(list_noisy_names)
 
 assert (len(names) == len(loaders))
 reject_thresholds = [0. + 0.001 * i for i in range(2000)]
@@ -165,13 +151,6 @@ for data_loader, ds_name in zip(loaders, names):
 # Get precision / recall where positive examples = adversarials, negative examples = real inputs.
 for item,advs in enumerate(list_advs):
     print("AUC-ROC for %s",advs)
-    print("With Noisy Data -- Total 30000 samples")
-    pos_names = [advs] # advs
-    neg_names = [names[0]] # test
-    neg_names.append(list_noisy_names[item]) #Noisy data
-    fp_eval.get_pr_wrapper(results, pos_names, neg_names, reject_thresholds, args)
-
-    print("Without Noisy Data -- Total 20000 samples")
     pos_names = [advs] # advs
     neg_names = [names[0]] # test
     fp_eval.get_pr_wrapper(results, pos_names, neg_names, reject_thresholds, args)
