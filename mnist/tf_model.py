@@ -12,7 +12,7 @@ from keras.layers import Dense, Dropout, Flatten
 from keras.layers import Conv2D, MaxPooling2D, BatchNormalization
 from keras.layers import Activation
 from keras.losses import categorical_crossentropy
-from third_party.lid_adversarial_subspace_detection.util import (get_data, get_model, cross_entropy, get_noisy_samples)
+from third_party.lid_adversarial_subspace_detection.util import (get_data, get_model, cross_entropy) #, get_noisy_samples)
 import tensorflow as tf
 from model import *
 K.set_image_data_format('channels_first')

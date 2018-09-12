@@ -33,7 +33,7 @@ fi
 for EPS in $ALL_EPS; do
 for NUMDX in $ALL_NUMDX; do
 
-LOGDIR=$BASE_LOGDIR/eps_$EPS/NUMDX_$numdx
+LOGDIR=$BASE_LOGDIR/eps_$EPS/numdx_$NUMDX
 mkdir -p $LOGDIR
 mkdir -p $LOGDIR/ckpt
 mkdir -p $LOGDIR/train
@@ -81,7 +81,7 @@ mkdir -p $ADV_EX_DIR
 # Generate attacks
 if [ "$3" = "attack" ]; then
 
-for ATCK in 'all'; do
+for ATCK in 'spsa'; do #  'all'; do
 # Write out the different attacks, use 'all' to generate all attacks for same random subset of test
 # For now copy paste this list into eval_fingerprint :) Will figure out a fix later
 

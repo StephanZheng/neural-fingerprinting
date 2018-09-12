@@ -120,8 +120,10 @@ with tf.Session() as sess:
             new_X_test[i,0,:,:] = (X_test[sample_no,:,:,0])
     new_Y_test = Y_test[random_samples,:]
 
+    print("attack:", args.attack)
+
     f = open(os.path.join(args.log_dir,'Random_Test_%s_.p' % (dataset)),'w')
-    pickle.dump({"adv_input":new_X_test,"adv_labels":new_Y_test},f)
+    # pickle.dump({"adv_input":new_X_test,"adv_labels":new_Y_test},f)
     f.close()
 
     if(args.attack == 'spsa' or args.attack == 'all'):        
