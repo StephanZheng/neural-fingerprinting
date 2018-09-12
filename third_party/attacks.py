@@ -10,7 +10,7 @@ import keras.backend as K
 K.set_image_data_format('channels_first')
 from keras.models import load_model
 import dill as pickle
-from third_party.lid_adversarial_subspace_detection.util import (get_data, get_model, cross_entropy, get_noisy_samples)
+from third_party.lid_adversarial_subspace_detection.util import (get_data, get_model, cross_entropy) # , get_noisy_samples)
 from third_party.lid_adversarial_subspace_detection.attacks import (fast_gradient_sign_method, basic_iterative_method,
                          saliency_map_method)
 from third_party.lid_adversarial_subspace_detection.cw_attacks import CarliniL2, CarliniLID
