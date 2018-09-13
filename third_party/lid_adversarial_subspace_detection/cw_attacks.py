@@ -476,8 +476,7 @@ class CarliniFP:
                 # perform the attack
                 _, l, l2s, scores, nimg = self.sess.run([self.train, self.loss,
                                                          self.l2dist, self.output,
-                                                         self.newimg], feed_dict={K.learning_phase(): 0,
-                                                                                  self.clean_logits: c_logits})
+                                                         self.newimg], feed_dict={K.learning_phase(): 0})
 
                 # print out the losses every 10%
                 # if iteration % (self.MAX_ITERATIONS // 10) == 0:
