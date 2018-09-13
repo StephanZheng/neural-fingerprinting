@@ -345,7 +345,7 @@ class CarliniFP:
 
 
         for i in range(num_dx):
-            logits_p = self.model(sxelf.newimg + fixed_dxs[i])
+            logits_p = self.model(self.newimg + fixed_dxs[i])
             logits_p_norm = logits_p/tf.norm(logits_p)
             loss_fp = loss_fp + tf.losses.mean_squared_error((logits_p_norm - norm_logits),target_dys[:,i,:])
         #self appropriate fingerprint
