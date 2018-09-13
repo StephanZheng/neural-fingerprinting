@@ -14,6 +14,7 @@ from third_party.lid_adversarial_subspace_detection.util import (get_data, get_m
 from third_party.lid_adversarial_subspace_detection.attacks import (fast_gradient_sign_method, basic_iterative_method,
                           saliency_map_method)
 from third_party.lid_adversarial_subspace_detection.cw_attacks import CarliniL2, CarliniFP
+from cleverhans.attacks import SPSA
 
 # FGSM & BIM attack parameters that were chosen
 ATTACK_PARAMS = {
@@ -25,6 +26,8 @@ ATTACK_PARAMS = {
 # CLIP_MIN = 0.0
 # CLIP_MAX = 1.0
 # PATH_DATA = "../data/"
+
+from cleverhans.model import Model, CallableModelWrapper
 
 CLIP_MIN = -0.5
 CLIP_MAX = 0.5
@@ -98,8 +101,11 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
         image_size = ATTACK_PARAMS[dataset]['image_size']
         num_channels = ATTACK_PARAMS[dataset]['num_channels']
         num_labels = ATTACK_PARAMS[dataset]['num_labels']
-        
-        spsa = SPSAAdam(model, back='tf', sess=sess)
+      	
+	from cleverhans.utils_keras import KerasModelWrapper
+	model = KerasModelWrapper(model)
+ 
+        spsa = SPSA(model, back='tf', sess=sess)
         
         # From the Cleverhans example
         # adv_inputs = adv_inputs.reshape(
@@ -108,12 +114,19 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
 
         spsa_params = {
             "batch_size": batch_size,
-            'num_steps': None,
+	    "epsilon": 0.1,
+            'num_steps': 10,
             'spsa_iters': 1,
             'early_stop_loss_threshold': None,
             'is_targeted': False,
-        }
-        X_adv = spsa.generate_np(adv_inputs, **spsa_params)
+	    'learning_rate': 0.01,
+	    'delta': 0.01, 
+	    'spsa_samples': 128,
+	}
+	# X = np.transpose(X, [0,2,3,1])
+	X_place = tf.placeholder(tf.float32, shape=[1, 1, 28, 28])
+	sess.run(X_place, feed_dict={X_place: X[0:1]})
+	X_adv = spsa.generate(X_place, **spsa_params)
 
 
     _, acc = model.evaluate(X_adv, Y, batch_size=batch_size, verbose=0)

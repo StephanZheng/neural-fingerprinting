@@ -33,6 +33,7 @@ from keras.layers import Activation
 import util
 from keras import backend as K
 
+
 # Global constants
 parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
 parser.add_argument('--batch-size', type=int, default=128)
@@ -132,7 +133,7 @@ with tf.Session() as sess:
         pytorch_network = Net()
         pytorch_network.load_state_dict(torch.load(args_ckpt))
         pytorch_network.eval()
-        model = Model(torch_model=pytorch_network,softmax=False)
+        model = Model(torch_model=pytorch_network,softmax=True)
         keras_network = model.model
         transfer.pytorch_to_keras(pytorch_network, model.model)
         pytorch_network.eval()
