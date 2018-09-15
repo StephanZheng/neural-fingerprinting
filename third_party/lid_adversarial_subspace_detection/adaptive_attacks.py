@@ -15,9 +15,11 @@ from cleverhans.evaluation import batch_eval
 from cleverhans.attacks_tf import (jacobian_graph, jacobian,
                                    apply_perturbations, saliency_map)
 import keras.backend as K
+import os
+import pickle
 
-
-def adaptive_fgsm(x, predictions, eps, clip_min=None, clip_max=None, y=None):
+def adaptive_fgsm(x, predictions, eps, clip_min=None, clip_max=None,
+                  log_dir=None, y=None, model_logits = None):
     """
     Computes symbolic TF tensor for the adversarial samples. This must
     be evaluated with a session.run call.
@@ -34,16 +36,41 @@ def adaptive_fgsm(x, predictions, eps, clip_min=None, clip_max=None, y=None):
     """
 
     # Compute loss
+    fingerprint_dir = log_dir
+    fixed_dxs = pickle.load(open(os.path.join(fingerprint_dir, "fp_inputs_dx.pkl"), "rb"))
+    fixed_dys = pickle.load(open(os.path.join(fingerprint_dir, "fp_outputs.pkl"), "rb"))
+
     if y is None:
         # In this case, use model predictions as ground truth
         y = tf.to_float(
             tf.equal(predictions,
                      tf.reduce_max(predictions, 1, keep_dims=True)))
+
+    output = model_logits(x)
+    pred_class = tf.argmax(output,axis=1)
+    loss_fp = 0
+    [a,b,c] = np.shape(fixed_dys)
+    num_dx = b
+    target_dys = tf.convert_to_tensor(fixed_dys)
+    target_dys = (tf.gather(target_dys,pred_class))
+    norm_logits = output/tf.norm(output)
+
+    for i in range(num_dx):
+        logits_p = model_logits(x + fixed_dxs[i])
+        logits_p_norm = logits_p/tf.norm(logits_p)
+        loss_fp = loss_fp + tf.losses.mean_squared_error((logits_p_norm - norm_logits),target_dys[:,i,:])
+        #self appropriate fingerprint
+
+
     y = y / tf.reduce_sum(y, 1, keep_dims=True)
     logits, = predictions.op.inputs
-    loss = tf.reduce_mean(
+    loss_ce = tf.reduce_mean(
         tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=y)
     )
+    alpha = 0.0
+    ## Tune this alpha!!
+
+    loss = alpha*loss_ce + loss_fp
 
     # Define gradient of loss wrt input
     grad, = tf.gradients(loss, x)
@@ -65,7 +92,8 @@ def adaptive_fgsm(x, predictions, eps, clip_min=None, clip_max=None, y=None):
 
 
 def adaptive_fast_gradient_sign_method(sess, model, X, Y, eps, clip_min=None,
-                              clip_max=None, batch_size=256):
+                              clip_max=None, batch_size=256, log_dir = None,
+                                       model_logits = None):
     """
     TODO
     :param sess:
@@ -84,7 +112,9 @@ def adaptive_fast_gradient_sign_method(sess, model, X, Y, eps, clip_min=None,
     adv_x = adaptive_fgsm(
         x, model(x), eps=eps,
         clip_min=clip_min,
-        clip_max=clip_max, y=y
+        clip_max=clip_max, y=y,
+        log_dir= log_dir,
+        model_logits = model_logits
     )
     X_adv, = batch_eval(
         sess, [x, y], [adv_x],
@@ -94,7 +124,7 @@ def adaptive_fast_gradient_sign_method(sess, model, X, Y, eps, clip_min=None,
     return X_adv
 
 
-def adapative_basic_iterative_method(sess, model, X, Y, eps, eps_iter, nb_iter=50,
+def adaptive_basic_iterative_method(sess, model, X, Y, eps, eps_iter, nb_iter=50,
                            clip_min=None, clip_max=None, batch_size=256):
     """
     TODO
