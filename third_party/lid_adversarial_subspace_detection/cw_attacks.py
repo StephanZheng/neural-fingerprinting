@@ -14,7 +14,8 @@ from tqdm import tqdm
 from cleverhans.utils import other_classes
 import keras.backend as K
 K.set_image_data_format('channels_first')
-from third_party.lid_adversarial_subspace_detection.util import lid_adv_term
+import pickle
+import os
 
 # settings for C&W L2 attack
 L2_BINARY_SEARCH_STEPS = 9  # number of times to adjust the constant with binary search
@@ -266,7 +267,8 @@ class CarliniFP:
                  confidence=L2_CONFIDENCE, targeted=L2_TARGETED, learning_rate=L2_LEARNING_RATE,
                  binary_search_steps=L2_BINARY_SEARCH_STEPS, max_iterations=L2_MAX_ITERATIONS,
                  abort_early=L2_ABORT_EARLY,
-                 initial_const=L2_INITIAL_CONST):
+                 initial_const=L2_INITIAL_CONST,
+                 fp_dir = None):
         """
         The modified L_2 optimized attack to break LID detector.
 
@@ -309,9 +311,8 @@ class CarliniFP:
         self.repeat = binary_search_steps >= 10
 
         #Load pickled dx-dysnano
-        fingerprint_dir = "/home/user/Downloads/data_dump/CIFAR_Final_Runs/CIFAR-sess-01-31-18_13-54-35/eps_0.003/numdx_30"
-        fixed_dxs = pickle.load(open(os.path.join(fingerprint_dir, "fp_inputs_dx.pkl"), "rb"))
-        fixed_dys = pickle.load(open(os.path.join(fingerprint_dir, "fp_outputs.pkl"), "rb"))
+        fixed_dxs = pickle.load(open(os.path.join(fp_dir, "fp_inputs_dx.pkl"), "rb"))
+        fixed_dys = pickle.load(open(os.path.join(fp_dir, "fp_outputs.pkl"), "rb"))
 
 
         shape = (self.batch_size, self.num_channels,self.image_size, self.image_size)
@@ -334,7 +335,7 @@ class CarliniFP:
         self.newimg = tf.tanh(modifier + self.timg) / 2
 
         # prediction BEFORE-SOFTMAX of the model
-        self.output = self.model(tf.tanh(self.timg)/2)
+        self.output = self.model(self.timg)
         pred_class = tf.argmax(self.output,axis=1)
         [a,b,c] = np.shape(fixed_dys)
         num_dx = b

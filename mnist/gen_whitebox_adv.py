@@ -212,6 +212,21 @@ with tf.Session() as sess:
                                args.batch_size, log_path=args.log_dir, fp_path= args.fingerprint_dir,
                                            model_logits = model_logits)
 
+    if(args.attack == 'cw-fp' or args.attack == 'all'):
+        #No softmax for Carlini attack
+        pytorch_network = Net()
+        pytorch_network.load_state_dict(torch.load(args_ckpt))
+        pytorch_network.eval()
+        model = Model(torch_model=pytorch_network,softmax=False)
+        keras_network = model.model
+        transfer.pytorch_to_keras(pytorch_network, model.model)
+        pytorch_network.eval()
+        model = model.model
+        batch_size = 16
+        craft_one_type(sess, model, new_X_test, new_Y_test, dataset, 'cw-fp',
+                           batch_size, log_path=args.log_dir, fp_path= args.fingerprint_dir)
+
+
     if(args.attack in ['fgsm','bim-a','bim-b','jsma','all']):
         # FGSM, BIM-a, JSMA
         #
