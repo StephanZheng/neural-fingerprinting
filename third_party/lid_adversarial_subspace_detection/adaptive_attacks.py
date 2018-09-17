@@ -35,7 +35,9 @@ def adaptive_fgsm(x, predictions, eps, clip_min=None, clip_max=None,
     :return: a tensor for the adversarial example
     """
 
-    # Compute loss
+    # Compute loss]
+    logits, = predictions.op.inputs
+
     fingerprint_dir = log_dir
     fixed_dxs = pickle.load(open(os.path.join(fingerprint_dir, "fp_inputs_dx.pkl"), "rb"))
     fixed_dys = pickle.load(open(os.path.join(fingerprint_dir, "fp_outputs.pkl"), "rb"))
@@ -46,8 +48,9 @@ def adaptive_fgsm(x, predictions, eps, clip_min=None, clip_max=None,
             tf.equal(predictions,
                      tf.reduce_max(predictions, 1, keep_dims=True)))
 
-    output = model_logits(x)
-    pred_class = tf.argmax(output,axis=1)
+    output = logits
+    print(np.shape(logits))
+    pred_class = tf.argmax(y,axis=1)
     loss_fp = 0
     [a,b,c] = np.shape(fixed_dys)
     num_dx = b
@@ -63,14 +66,13 @@ def adaptive_fgsm(x, predictions, eps, clip_min=None, clip_max=None,
 
 
     y = y / tf.reduce_sum(y, 1, keep_dims=True)
-    logits, = predictions.op.inputs
     loss_ce = tf.reduce_mean(
         tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=y)
     )
-    alpha = 0.0
+    alpha = 0.5
     ## Tune this alpha!!
 
-    loss = alpha*loss_ce + loss_fp
+    loss = loss_ce - alpha*loss_fp
 
     # Define gradient of loss wrt input
     grad, = tf.gradients(loss, x)

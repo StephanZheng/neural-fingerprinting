@@ -89,4 +89,4 @@ class Adv(data.Dataset):
 
     def __len__(self):
         # Feed length as an argument
-        return 1328
+        return 32

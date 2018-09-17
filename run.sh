@@ -20,8 +20,8 @@ EPOCHS=$8
 fi
 
 if [ "$1" = "mnist" ]; then
-NUM_EPOCHS=2
-EPOCHS="2"
+NUM_EPOCHS=1
+EPOCHS="1"
 fi
 
 
@@ -43,7 +43,7 @@ mkdir -p $LOGDIR/adv_examples
 # Train
 if [ "$2" = "train" ]; then
 
-python $1/train_fingerprint.py \
+python2 $1/train_fingerprint.py \
 --batch-size 128 \
 --test-batch-size 128 \
 --epochs $NUM_EPOCHS \
@@ -81,14 +81,15 @@ mkdir -p $ADV_EX_DIR
 # Generate attacks
 if [ "$3" = "attack" ]; then
 
-for ATCK in 'spsa'; do #  'all'; do
+for ATCK in 'adapt-fgsm'; do #  'all'; do
 # Write out the different attacks, use 'all' to generate all attacks for same random subset of test
 # For now copy paste this list into eval_fingerprint :) Will figure out a fix later
 
-python $1/gen_whitebox_adv.py \
+python2 $1/gen_whitebox_adv.py \
 --attack $ATCK \
 --ckpt $LOGDIR/ckpt/state_dict-ep_$EPOCH.pth \
 --log-dir $ADV_EX_DIR \
+--fingerprint-dir $LOGDIR \
 --batch-size 128
 done
 
@@ -102,7 +103,7 @@ if [ "$4" = "eval" ]; then
 EVAL_LOGDIR=$LOGDIR/eval/epoch_$EPOCH
 mkdir -p $EVAL_LOGDIR
 
-python $1/eval_fingerprint.py \
+python2 $1/eval_fingerprint.py \
 --batch-size 128 \
 --epochs 100 \
 --lr 0.001 \

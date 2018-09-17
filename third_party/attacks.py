@@ -11,8 +11,16 @@ K.set_image_data_format('channels_first')
 from keras.models import load_model
 import dill as pickle
 from third_party.lid_adversarial_subspace_detection.util import (get_data, get_model, cross_entropy) # , get_noisy_samples)
-from third_party.lid_adversarial_subspace_detection.attacks import (fast_gradient_sign_method, basic_iterative_method,
-                          saliency_map_method)
+from third_party.lid_adversarial_subspace_detection.attacks \
+            import (fast_gradient_sign_method, basic_iterative_method,
+                                          saliency_map_method)
+
+from third_party.lid_adversarial_subspace_detection.adaptive_attacks \
+            import adaptive_fast_gradient_sign_method
+
+from third_party.lid_adversarial_subspace_detection.adaptive_attacks \
+            import adaptive_basic_iterative_method
+
 from third_party.lid_adversarial_subspace_detection.cw_attacks import CarliniL2, CarliniFP
 from cleverhans.attacks import SPSA
 
@@ -33,7 +41,8 @@ CLIP_MIN = -0.5
 CLIP_MAX = 0.5
 PATH_DATA = "./adv_examples/"
 
-def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None):
+def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None,
+                   fp_path = None, model_logits = None):
     """
     TODO
     :param sess:
@@ -54,6 +63,15 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
         X_adv = fast_gradient_sign_method(
             sess, model, X, Y, eps=ATTACK_PARAMS[dataset]['eps'], clip_min=CLIP_MIN,
             clip_max=CLIP_MAX, batch_size=batch_size
+        )
+    elif attack == 'adapt-fgsm':
+        # Adaptive FGSM attack
+        print('Crafting fgsm adversarial samples...')
+        X_adv = adaptive_fast_gradient_sign_method(
+            sess, model, X, Y, eps=ATTACK_PARAMS[dataset]['eps'], clip_min=CLIP_MIN,
+            clip_max=CLIP_MAX, batch_size=batch_size,
+            log_dir = fp_path,
+            model_logits = model_logits,
         )
     elif attack in ['bim-a', 'bim-b']:
         # BIM attack

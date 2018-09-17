@@ -40,7 +40,9 @@ parser.add_argument('--batch-size', type=int, default=128)
 parser.add_argument('--attack', default="fgsm")
 parser.add_argument('--ckpt', default="/tmp/user/logs/mnist/ckpt/state_dict-ep_1.pth")
 parser.add_argument('--log-dir', type=str, default="/tmp/user/logs/mnist/adv_examples")
+parser.add_argument('--fingerprint-dir', type=str, default="/tmp/logs/neural_fingerprint/mnist/eps_0.1/numdx_5")
 args = parser.parse_args()
+
 with open('./mnist/config.json') as config_file:
   config = json.load(config_file)
 num_eval_examples = config['num_eval_examples']
@@ -116,7 +118,7 @@ with tf.Session() as sess:
 
     _, _, X_test, Y_test = get_data(dataset)
     num_samples = np.shape(X_test)[0]
-    num_rand_samples = 1328
+    num_rand_samples = 32
     random_samples = np.random.randint(0,num_samples, num_rand_samples)
     new_X_test = np.zeros((num_rand_samples, 1, 28, 28))
     for i,sample_no in enumerate(random_samples):
@@ -126,6 +128,7 @@ with tf.Session() as sess:
     print("attack:", args.attack)
 
     f = open(os.path.join(args.log_dir,'Random_Test_%s_.p' % (dataset)),'w')
+    print(os.path.join(args.log_dir,'Random_Test_%s_.p' % (dataset)))
     pickle.dump({"adv_input":new_X_test,"adv_labels":new_Y_test},f)
     f.close()
 
@@ -181,6 +184,33 @@ with tf.Session() as sess:
                                    args.attack,
                                  config['log_dir'])
         evaluate_checkpoint(sess,model)
+
+    if(args.attack in ['adapt-fgsm','adapt-bim-a','adapt-all']):
+        # FGSM, BIM-a, JSMA
+        #
+        pytorch_network = Net()
+        pytorch_network.load_state_dict(torch.load(args_ckpt))
+        pytorch_network.eval()
+        model_logits  = Model(torch_model=pytorch_network)
+        model  = Model(torch_model=pytorch_network)
+        keras_network = model.model
+        pytorch_network.eval()
+        transfer.pytorch_to_keras(pytorch_network, model.model)
+        transfer.pytorch_to_keras(pytorch_network, model_logits.model)
+        #util.test_tf2torch( model.model, pytorch_network,(1, 28, 28), num_rand_inp=10, precision=10**-2)
+        # Add tests to ensure model is transferred well
+        model = model.model
+        model_logits = model.model
+        if(args.attack == 'adapt-all'):
+            for attack in ['adapt-fgsm','adapt-bim-a']:
+                (X_adv,Y_adv) = craft_one_type(sess, model, new_X_test, new_Y_test, dataset, attack,
+                               args.batch_size, log_path=args.log_dir, fp_path= args.fingerprint_dir,
+                                               model_logits = model_logits)
+        else:
+
+            (X_adv,Y_adv) = craft_one_type(sess, model, new_X_test, new_Y_test, dataset, args.attack,
+                               args.batch_size, log_path=args.log_dir, fp_path= args.fingerprint_dir,
+                                           model_logits = model_logits)
 
     if(args.attack in ['fgsm','bim-a','bim-b','jsma','all']):
         # FGSM, BIM-a, JSMA

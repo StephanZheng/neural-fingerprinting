@@ -334,7 +334,7 @@ class CarliniFP:
         self.newimg = tf.tanh(modifier + self.timg) / 2
 
         # prediction BEFORE-SOFTMAX of the model
-        self.output = self.model(self.newimg)
+        self.output = self.model(tf.tanh(self.timg)/2)
         pred_class = tf.argmax(self.output,axis=1)
         [a,b,c] = np.shape(fixed_dys)
         num_dx = b
