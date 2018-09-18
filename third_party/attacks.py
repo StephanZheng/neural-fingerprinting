@@ -38,6 +38,7 @@ ATTACK_PARAMS = {
 
 from cleverhans.model import Model, CallableModelWrapper
 
+
 CLIP_MIN = -0.5
 CLIP_MAX = 0.5
 PATH_DATA = "./adv_examples/"
@@ -121,6 +122,7 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
         image_size = ATTACK_PARAMS[dataset]['image_size']
         num_channels = ATTACK_PARAMS[dataset]['num_channels']
         num_labels = ATTACK_PARAMS[dataset]['num_labels']
+<<<<<<< HEAD
       	from cleverhans.utils_keras import KerasModelWrapper
         model = KerasModelWrapper(model)
  
@@ -130,23 +132,47 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
         # adv_inputs = adv_inputs.reshape(
             # (source_samples * nb_classes, img_rows, img_cols, nchannels))
         adv_inputs = X 
+=======
+      	real_batch_size = X.shape[0]
+>>>>>>> 13782891c396b9ef727e077a37c369c05edac309
 
+	from cleverhans.utils_keras import KerasModelWrapper
+	wrapped_model = KerasModelWrapper(model)
+	wrapped_model.nb_classes = 10 
+        spsa = SPSA(wrapped_model, back='tf', sess=sess)
         spsa_params = {
-            "batch_size": batch_size,
-	    "epsilon": 0.1,
-            'num_steps': 10,
+	    "epsilon": 4. / 255,
+            'num_steps': 30,
             'spsa_iters': 1,
-            'early_stop_loss_threshold': None,
+            'early_stop_loss_threshold': -1.,
             'is_targeted': False,
-	    'learning_rate': 0.01,
-	    'delta': 0.01, 
-	    'spsa_samples': 128,
-	}
-	# X = np.transpose(X, [0,2,3,1])
-	X_place = tf.placeholder(tf.float32, shape=[1, 1, 28, 28])
-	sess.run(X_place, feed_dict={X_place: X[0:1]})
-	X_adv = spsa.generate(X_place, **spsa_params)
+	    'is_debug': True,
+	    'spsa_samples': real_batch_size,
+	}	
+	batch_shape = X.shape
+	X_input = tf.placeholder(tf.float32, shape=(1,) + batch_shape[1:])
+	Y_label = tf.placeholder(tf.int32, shape=(1,))
+	X_adv_spsa = spsa.generate(X_input, y=Y_label, **spsa_params)
+	
+	# X = (X - np.argmin(X))/(np.argmax(X)-np.argmin(X))
+    X_adv = []
+    for i in range(real_batch_size):        
+	    
+        # rescale to format TF wants
+        _min = np.min(X[i])
+        _max = np.max(X[i])
+        X_i_norm = (X[i] - _min)/(_max-_min)
+	   
+        # Run attack
+        res = sess.run(X_adv_spsa, feed_dict={X_input: np.expand_dims(X_i_norm, axis=0), Y_label: np.array([np.argmax(Y[i])])})
+	    
+        # Rescale result back to our scale
+        X_adv += [(res + _min) * (_max-_min)]
 
+	X_adv = np.concatenate(X_adv, axis=0)
+	# X_adv = spsa.generate_np(X, **spsa_params) 
+
+    print(X.shape, X_adv.shape, Y.shape)
 
     _, acc = model.evaluate(X_adv, Y, batch_size=batch_size, verbose=0)
     print("Model accuracy on the adversarial test set: %0.2f%%" % (100.0 * acc))
@@ -280,3 +306,4 @@ if __name__ == "__main__":
     # # svhn
     # args = parser.parse_args(['-d', 'svhn', '-a', 'cw-lid', '-b', '16'])
     # main(args)
+
