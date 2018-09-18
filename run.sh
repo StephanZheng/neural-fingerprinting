@@ -20,8 +20,8 @@ EPOCHS=$8
 fi
 
 if [ "$1" = "mnist" ]; then
-NUM_EPOCHS=1
-EPOCHS="1"
+NUM_EPOCHS=2
+EPOCHS="2"
 fi
 
 

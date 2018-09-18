@@ -18,10 +18,10 @@ import pickle
 import os
 
 # settings for C&W L2 attack
-L2_BINARY_SEARCH_STEPS = 3
-L2_BINARY_SEARCH_STEPS_1 = 3  # number of times to adjust the constant with binary search
-L2_BINARY_SEARCH_STEPS_2 = 3
-L2_MAX_ITERATIONS = 10    # number of iterations to perform gradient descent
+L2_BINARY_SEARCH_STEPS = 9
+L2_BINARY_SEARCH_STEPS_1 = 9  # number of times to adjust the constant with binary search
+L2_BINARY_SEARCH_STEPS_2 = 9
+L2_MAX_ITERATIONS = 1000    # number of iterations to perform gradient descent
 L2_ABORT_EARLY = True       # if we stop improving, abort gradient descent early
 L2_LEARNING_RATE = 1e-2     # larger values converge faster to less accurate results
 L2_TARGETED = True          # should we target one specific class? or just be wrong?

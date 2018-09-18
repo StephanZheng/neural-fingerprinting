@@ -112,7 +112,7 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
         image_size = ATTACK_PARAMS[dataset]['image_size']
         num_channels = ATTACK_PARAMS[dataset]['num_channels']
         num_labels = ATTACK_PARAMS[dataset]['num_labels']
-        cw_attack = CarliniFP_2vars(sess, model, image_size, num_channels, num_labels, batch_size=batch_size,
+        cw_attack = CarliniFP(sess, model, image_size, num_channels, num_labels, batch_size=batch_size,
                               fp_dir=fp_path)
         X_adv = cw_attack.attack(X, Y)
 
@@ -122,20 +122,6 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
         image_size = ATTACK_PARAMS[dataset]['image_size']
         num_channels = ATTACK_PARAMS[dataset]['num_channels']
         num_labels = ATTACK_PARAMS[dataset]['num_labels']
-<<<<<<< HEAD
-      	from cleverhans.utils_keras import KerasModelWrapper
-        model = KerasModelWrapper(model)
- 
-        spsa = SPSA(model, back='tf', sess=sess)
-        
-        # From the Cleverhans example
-        # adv_inputs = adv_inputs.reshape(
-            # (source_samples * nb_classes, img_rows, img_cols, nchannels))
-        adv_inputs = X 
-=======
-      	real_batch_size = X.shape[0]
->>>>>>> 13782891c396b9ef727e077a37c369c05edac309
-
 	from cleverhans.utils_keras import KerasModelWrapper
 	wrapped_model = KerasModelWrapper(model)
 	wrapped_model.nb_classes = 10 
@@ -155,22 +141,22 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
 	X_adv_spsa = spsa.generate(X_input, y=Y_label, **spsa_params)
 	
 	# X = (X - np.argmin(X))/(np.argmax(X)-np.argmin(X))
-    X_adv = []
-    for i in range(real_batch_size):        
+        X_adv = []
+        for i in range(real_batch_size):        
 	    
-        # rescale to format TF wants
-        _min = np.min(X[i])
-        _max = np.max(X[i])
-        X_i_norm = (X[i] - _min)/(_max-_min)
+            # rescale to format TF wants
+            _min = np.min(X[i])
+            _max = np.max(X[i])
+            X_i_norm = (X[i] - _min)/(_max-_min)
 	   
-        # Run attack
-        res = sess.run(X_adv_spsa, feed_dict={X_input: np.expand_dims(X_i_norm, axis=0), Y_label: np.array([np.argmax(Y[i])])})
+            # Run attack
+            res = sess.run(X_adv_spsa, feed_dict={X_input: np.expand_dims(X_i_norm, axis=0), Y_label: np.array([np.argmax(Y[i])])})
 	    
-        # Rescale result back to our scale
-        X_adv += [(res + _min) * (_max-_min)]
+            # Rescale result back to our scale
+            X_adv += [(res + _min) * (_max-_min)]
 
-	X_adv = np.concatenate(X_adv, axis=0)
-	# X_adv = spsa.generate_np(X, **spsa_params) 
+            X_adv = np.concatenate(X_adv, axis=0)
+            # X_adv = spsa.generate_np(X, **spsa_params) 
 
     print(X.shape, X_adv.shape, Y.shape)
 
