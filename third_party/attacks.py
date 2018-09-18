@@ -142,12 +142,20 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
 	X_adv_spsa = spsa.generate(X_input, y=Y_label, **spsa_params)
 	
 	# X = (X - np.argmin(X))/(np.argmax(X)-np.argmin(X))
-	X_adv = []
-	for i in range(real_batch_size):
-	    print("spsa im", i, np.argmax(Y[i])) 
-	    X_i_norm = X[i] - np.min(X[i])
-	    res = sess.run(X_adv_spsa, feed_dict={X_input: np.expand_dims(X_i_norm, axis=0), Y_label: np.array([np.argmax(Y[i])])})
-	    X_adv += [res]
+    X_adv = []
+    for i in range(real_batch_size):        
+	    
+        # rescale to format TF wants
+        _min = np.min(X[i])
+        _max = np.max(X[i])
+        X_i_norm = (X[i] - _min)/(_max-_min)
+	   
+        # Run attack
+        res = sess.run(X_adv_spsa, feed_dict={X_input: np.expand_dims(X_i_norm, axis=0), Y_label: np.array([np.argmax(Y[i])])})
+	    
+        # Rescale result back to our scale
+        X_adv += [(res + _min) * (_max-_min)]
+
 	X_adv = np.concatenate(X_adv, axis=0)
 	# X_adv = spsa.generate_np(X, **spsa_params) 
 
@@ -262,3 +270,4 @@ if __name__ == "__main__":
     # # svhn
     # args = parser.parse_args(['-d', 'svhn', '-a', 'cw-lid', '-b', '16'])
     # main(args)
+
