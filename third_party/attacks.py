@@ -129,24 +129,24 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
         spsa = SPSA(wrapped_model, back='tf', sess=sess)
         spsa_params = {
 	    "epsilon": 4. / 255,
-            'num_steps': 1,
+            'num_steps': 30,
             'spsa_iters': 1,
             'early_stop_loss_threshold': -1.,
             'is_targeted': False,
 	    'is_debug': True,
 	    'spsa_samples': real_batch_size,
 	}	
-	batch_shape = (real_batch_size, 1, 28, 28)
+	batch_shape = X.shape
 	X_input = tf.placeholder(tf.float32, shape=(1,) + batch_shape[1:])
 	Y_label = tf.placeholder(tf.int32, shape=(1,))
 	X_adv_spsa = spsa.generate(X_input, y=Y_label, **spsa_params)
 	
 	# X = (X - np.argmin(X))/(np.argmax(X)-np.argmin(X))
-	X = X + 0.5
 	X_adv = []
 	for i in range(real_batch_size):
 	    print("spsa im", i, np.argmax(Y[i])) 
-	    res = sess.run(X_adv_spsa, feed_dict={X_input: np.expand_dims(X[i], axis=0), Y_label: np.array([np.argmax(Y[i])])})
+	    X_i_norm = X[i] - np.min(X[i])
+	    res = sess.run(X_adv_spsa, feed_dict={X_input: np.expand_dims(X_i_norm, axis=0), Y_label: np.array([np.argmax(Y[i])])})
 	    X_adv += [res]
 	X_adv = np.concatenate(X_adv, axis=0)
 	# X_adv = spsa.generate_np(X, **spsa_params) 
