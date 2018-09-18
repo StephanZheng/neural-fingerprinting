@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 from __future__ import print_function
+from keras import backend as K
 
 import os
 import argparse
@@ -21,7 +22,7 @@ from third_party.lid_adversarial_subspace_detection.adaptive_attacks \
 from third_party.lid_adversarial_subspace_detection.adaptive_attacks \
             import adaptive_basic_iterative_method
 
-from third_party.lid_adversarial_subspace_detection.cw_attacks import CarliniL2, CarliniFP
+from third_party.lid_adversarial_subspace_detection.cw_attacks import CarliniL2, CarliniFP, CarliniFP_2vars
 from cleverhans.attacks import SPSA
 
 # FGSM & BIM attack parameters that were chosen
@@ -110,7 +111,7 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
         image_size = ATTACK_PARAMS[dataset]['image_size']
         num_channels = ATTACK_PARAMS[dataset]['num_channels']
         num_labels = ATTACK_PARAMS[dataset]['num_labels']
-        cw_attack = CarliniFP(sess, model, image_size, num_channels, num_labels, batch_size=batch_size,
+        cw_attack = CarliniFP_2vars(sess, model, image_size, num_channels, num_labels, batch_size=batch_size,
                               fp_dir=fp_path)
         X_adv = cw_attack.attack(X, Y)
 
@@ -120,9 +121,8 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
         image_size = ATTACK_PARAMS[dataset]['image_size']
         num_channels = ATTACK_PARAMS[dataset]['num_channels']
         num_labels = ATTACK_PARAMS[dataset]['num_labels']
-      	
-	from cleverhans.utils_keras import KerasModelWrapper
-	model = KerasModelWrapper(model)
+      	from cleverhans.utils_keras import KerasModelWrapper
+        model = KerasModelWrapper(model)
  
         spsa = SPSA(model, back='tf', sess=sess)
         
@@ -152,6 +152,29 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
     print("Model accuracy on the adversarial test set: %0.2f%%" % (100.0 * acc))
     _, acc = model.evaluate(X, Y, batch_size=batch_size, verbose=0)
     print("Model accuracy on the test set: %0.2f%%" % (100.0 * acc))
+
+    if("adapt" in attack or "fp" in attack):
+        [m,_,_,_]=(np.shape(X_adv))
+        print(Y)
+        cropped_X_adv = []
+        cropped_Y = []
+        cropped_X = []
+        if(dataset == 'mnist'):
+            X_place = tf.placeholder(tf.float32, shape=[1, 1, 28, 28])
+            pred = model(X_place)
+        for i in range(batch_size):
+            print(i)
+            logits_op = sess.run(pred,feed_dict={X_place:X_adv[i:i+1,:,:,:],
+                                           K.learning_phase(): 0})
+            if(not np.argmax(logits_op) == np.argmax(Y[i,:])):
+                cropped_Y.append(Y[i,:])
+                cropped_X_adv.append(X_adv[i,:,:,:])
+                cropped_X.append(X[i,:,:,:])
+        X_adv = np.array(cropped_X_adv)
+        X = np.array(cropped_X)
+        Y = np.array(cropped_Y)
+
+    print(len(X_adv))
 
     #np.save(os.path.join(PATH_DATA, 'Adv_%s_%s.npy' % (dataset, attack)), X_adv)
     f = open(os.path.join(log_path,'Adv_%s_%s.p' % (dataset, attack)),'w')

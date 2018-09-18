@@ -69,7 +69,7 @@ def adaptive_fgsm(x, predictions, eps, clip_min=None, clip_max=None,
     loss_ce = tf.reduce_mean(
         tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=y)
     )
-    alpha = 0.5
+    alpha = 0.1
     ## Tune this alpha!!
 
     loss = loss_ce - alpha*loss_fp
