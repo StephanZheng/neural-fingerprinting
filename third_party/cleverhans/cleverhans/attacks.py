@@ -1759,7 +1759,7 @@ class SPSA(Attack):
 
     def generate(self,
                  x,
-                 log_dir="",
+                 log_dir=None,
                  y=None,
                  y_target=None,
                  epsilon=None,
@@ -1816,7 +1816,7 @@ class SPSA(Attack):
 
         import cPickle as pickle
         import os
-
+        print("log_dir", log_dir)
         fingerprint_dir = log_dir
         fixed_dxs = pickle.load(open(os.path.join(fingerprint_dir, "fp_inputs_dx.pkl"), "rb"))
         fixed_dys = pickle.load(open(os.path.join(fingerprint_dir, "fp_outputs.pkl"), "rb"))
