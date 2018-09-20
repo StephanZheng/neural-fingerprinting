@@ -21,13 +21,13 @@ import os
 L2_BINARY_SEARCH_STEPS = 9
 L2_BINARY_SEARCH_STEPS_1 = 9  # number of times to adjust the constant with binary search
 L2_BINARY_SEARCH_STEPS_2 = 2
-L2_MAX_ITERATIONS = 1000    # number of iterations to perform gradient descent
+L2_MAX_ITERATIONS = 10    # number of iterations to perform gradient descent
 L2_ABORT_EARLY = True       # if we stop improving, abort gradient descent early
 L2_LEARNING_RATE = 1e-2     # larger values converge faster to less accurate results
 L2_TARGETED = True          # should we target one specific class? or just be wrong?
 L2_CONFIDENCE = 0           # how strong the adversarial example should be
 L2_INITIAL_CONST = 1e-3    # the initial constant c to pick as a first guess
-L2_INITIAL_CONST_2 = 1   # the initial constanct to choose for the second variable
+L2_INITIAL_CONST_2 = 0.1   # the initial constanct to choose for the second variable
                            # choose with more fingerprints
 
 class CarliniL2:
@@ -537,11 +537,12 @@ class CarliniFP:
 class CarliniFP_2vars:
     def __init__(self, sess, model, image_size, num_channels, num_labels, batch_size=100,
                  confidence=L2_CONFIDENCE, targeted=L2_TARGETED, learning_rate=L2_LEARNING_RATE,
-                 binary_search_steps_1=L2_BINARY_SEARCH_STEPS_1,
-                 binary_search_steps_2=L2_BINARY_SEARCH_STEPS_2, max_iterations=L2_MAX_ITERATIONS,
+                 binary_search_steps=L2_BINARY_SEARCH_STEPS_1,
+                 binary_search_steps_2 = L2_BINARY_SEARCH_STEPS_2,
+                 max_iterations=L2_MAX_ITERATIONS,
                  abort_early=L2_ABORT_EARLY,
                  initial_const=L2_INITIAL_CONST,
-                 initial_const_2 = L2_INITIAL_CONST_2,
+                 initial_const_2=L2_INITIAL_CONST_2,
                  fp_dir = None):
         """
         The modified L_2 optimized attack to break LID detector.
@@ -576,7 +577,7 @@ class CarliniFP_2vars:
         self.TARGETED = targeted
         self.LEARNING_RATE = learning_rate
         self.MAX_ITERATIONS = max_iterations
-        self.BINARY_SEARCH_STEPS_1 = binary_search_steps_1
+        self.BINARY_SEARCH_STEPS = binary_search_steps
         self.BINARY_SEARCH_STEPS_2 = binary_search_steps_2
         self.ABORT_EARLY = abort_early
         self.CONFIDENCE = confidence
@@ -584,7 +585,7 @@ class CarliniFP_2vars:
         self.initial_const_2 = initial_const_2
         self.batch_size = batch_size
 
-        self.repeat = binary_search_steps_1 >= 10 and binary_search_steps_2>=10
+        self.repeat = binary_search_steps >= 10
 
         #Load pickled dx-dysnano
         fixed_dxs = pickle.load(open(os.path.join(fp_dir, "fp_inputs_dx.pkl"), "rb"))
@@ -601,22 +602,25 @@ class CarliniFP_2vars:
         self.timg = tf.Variable(np.zeros(shape), dtype=tf.float32)
         self.tlab = tf.Variable(np.zeros((self.batch_size, self.num_labels)), dtype=tf.float32)
         self.const = tf.Variable(np.zeros(self.batch_size), dtype=tf.float32)
-        self.const2 = tf.Variable(np.zeros(self.batch_size), dtype=tf.float32)
+        self.alpha = tf.Variable(np.zeros(self.batch_size), dtype=tf.float32)
 
         # and here's what we use to assign them
         self.assign_timg = tf.placeholder(tf.float32, shape)
         self.assign_tlab = tf.placeholder(tf.float32, (self.batch_size, self.num_labels))
         self.assign_const = tf.placeholder(tf.float32, [self.batch_size])
-        self.assign_const2 = tf.placeholder(tf.float32, [self.batch_size])
+        self.assign_alpha = tf.placeholder(tf.float32, [self.batch_size])
 
         # the resulting image, tanh'd to keep bounded from -0.5 to 0.5
         self.newimg = tf.tanh(modifier + self.timg) / 2
 
         # prediction BEFORE-SOFTMAX of the model
         self.output = self.model(self.newimg)
-        self.output2 = self.model(self.timg)
+        # Original Logits
 
-        pred_class = tf.argmax(self.output2,axis=1)
+        #Current_label
+        self.output_fp = self.model(self.timg)
+
+        pred_class = tf.argmax(self.output_fp,axis=1)
         [a,b,c] = np.shape(fixed_dys)
         num_dx = b
         loss_fp = 0
@@ -634,7 +638,8 @@ class CarliniFP_2vars:
 
         # distance to the input data
         self.l2dist = tf.reduce_sum(tf.square(self.newimg - tf.tanh(self.timg) / 2), [1, 2, 3])
-
+        self.fpdist = tf.reduce_sum(tf.square(((logits_p_norm - norm_logits)) -
+                                              tf.cast(target_dys[:,i,:],dtype=tf.float32)), [1])
         # compute the probability of the label class versus the maximum other
         real = tf.reduce_sum((self.tlab) * self.output, 1)
         other = tf.reduce_max((1 - self.tlab) * self.output - (self.tlab * 10000), 1)
@@ -650,8 +655,9 @@ class CarliniFP_2vars:
         self.clean_logits = tf.placeholder(tf.float32, (1, self.batch_size, None))
 
         # sum up the losses
+        self.loss_fp = loss_fp
         self.loss2 = tf.reduce_sum(self.l2dist)
-        self.loss1 = tf.reduce_sum(self.const * (loss1 + self.const2*loss_fp))
+        self.loss1 = tf.reduce_sum(self.const * (loss1 + self.alpha*self.loss_fp))
         self.loss = self.loss1 + self.loss2
         self.grads = tf.reduce_max(tf.gradients(self.loss, [modifier]))
 
@@ -667,7 +673,7 @@ class CarliniFP_2vars:
         self.setup.append(self.timg.assign(self.assign_timg))
         self.setup.append(self.tlab.assign(self.assign_tlab))
         self.setup.append(self.const.assign(self.assign_const))
-        self.setup.append(self.const2.assign(self.assign_const2))
+        self.setup.append(self.alpha.assign(self.assign_alpha))
 
         self.init = tf.variables_initializer(var_list=[modifier] + new_vars)
 
@@ -720,133 +726,174 @@ class CarliniFP_2vars:
         # convert to tanh-space
         imgs = np.arctanh(imgs * 1.999999)
 
-        # set the lower and upper bounds accordingly for variable 1
+        # set the lower and upper bounds accordingly
         lower_bound = np.zeros(batch_size)
         CONST = np.ones(batch_size) * self.initial_const
+        BEST_CONST = np.ones(batch_size) * self.initial_const
         upper_bound = np.ones(batch_size) * 1e10
 
-        lower_bound_2 = np.zeros(batch_size)
-        CONST_2 = np.ones(batch_size) * self.initial_const_2
-        upper_bound_2 = np.ones(batch_size) * 1e01
 
-        # set the lower and upper bounds for variable 2
+        lower_bound_2 = np.ones(batch_size)*0.01
+        ALPHA = np.ones(batch_size) * self.initial_const_2
+        upper_bound_2 = np.ones(batch_size) * 1e4
 
         # the best l2, score, and image attack
         o_bestl2 = [1e10] * batch_size
         o_bestscore = [-1] * batch_size
         o_bestattack = [np.zeros(imgs[0].shape)] * batch_size
+        o_bestfpscore = [1e10] * batch_size
         # o_bestattack = np.copy(imgs)
 
-        for outer_step_1 in range(self.BINARY_SEARCH_STEPS_1):
-            o_bestl2_inner = [1e10] * batch_size
-            o_bestscore_inner = [-1] * batch_size
-            o_bestattack_inner = [np.zeros(imgs[0].shape)] * batch_size
-            for outer_step_2 in range(self.BINARY_SEARCH_STEPS_2):
-
-                # completely reset adam's internal state.
-                self.sess.run(self.init)
-                batch = imgs[:batch_size]
-                batchlab = labs[:batch_size]
-
-                bestl2_inner = [1e10] * batch_size
-                bestscore_inner = [-1] * batch_size
-
-                # The last iteration (if we run many steps) repeat the search once.
-                if self.repeat == True and outer_step_2 == self.BINARY_SEARCH_STEPS_2 - 1:
-                    CONST_2 = upper_bound_2
-
-                # set the variables so that we don't have to send them over again
-                self.sess.run(self.setup, {self.assign_timg: batch,
-                                           self.assign_tlab: batchlab,
-                                           self.assign_const: CONST,
-                                           self.assign_const2: CONST_2 })
-
-                # get clean logits of clean samples:
-                c_logits = self.sess.run([self.output], feed_dict={K.learning_phase(): 0})
-
-                prev = 1e6
-                for iteration in range(self.MAX_ITERATIONS):
-                    # perform the attack
-                    _, l, l2s, scores, nimg = self.sess.run([self.train, self.loss,
-                                                             self.l2dist, self.output,
-                                                             self.newimg], feed_dict={K.learning_phase(): 0})
-
-                    # print out the losses every 10%
-                    # if iteration % (self.MAX_ITERATIONS // 10) == 0:
-                    #     print(iteration, self.sess.run((self.loss, self.loss1, self.loss2,
-                    # self.grads, self.max_mod), feed_dict={K.learning_phase(): 0}))
-
-                    # check if we should abort search if we're getting nowhere.
-                    if self.ABORT_EARLY and iteration % (self.MAX_ITERATIONS // 10) == 0:
-                        if l > prev * .9999:
-                            break
-                        prev = l
-
-                    # adjust the best result found so far
-                    for e, (l2, sc, ii) in enumerate(zip(l2s, scores, nimg)):
-                        if l2 < bestl2_inner[e] and compare(sc, np.argmax(batchlab[e])):
-                            bestl2_inner[e] = l2
-                            bestscore_inner[e] = np.argmax(sc)
-                        if l2 < o_bestl2_inner[e] and compare(sc, np.argmax(batchlab[e])):
-                            # print('l2:', l2, 'bestl2[e]: ', bestl2[e])
-                            # print('score:', np.argmax(sc), 'bestscore[e]:', bestscore[e])
-                            # print('np.argmax(batchlab[e]):', np.argmax(batchlab[e]))
-                            o_bestl2_inner[e] = l2
-                            o_bestscore_inner[e] = np.argmax(sc)
-                            o_bestattack_inner[e] = ii
-
-                # adjust the constant as needed
-                for e in range(batch_size):
-                    if compare(bestscore_inner[e], np.argmax(batchlab[e])) \
-                            and bestscore_inner[e] != -1:
-                        print("Success Const2",CONST_2[e])
-                        # success, divide const by two
-                        lower_bound[e] = max(lower_bound[e], CONST_2[e])
-                        if lower_bound_2[e] > 1e-2:
-                            CONST_2[e] = (lower_bound_2[e] + upper_bound_2[e]) / 2
-                    else:
-                        # failure, either divide by 10 if no solution found yet
-                        #          or do binary search with the known lower bound
-                        lower_bound[e] = max(lower_bound[e], CONST_2[e])
-                        if lower_bound_2[e] > 1e-2:
-                            CONST_2[e] = (lower_bound_2[e] + upper_bound_2[e]) / 2
-                        else:
-                            CONST_2[e] /= 10
+        for outer_step in range(self.BINARY_SEARCH_STEPS):
+            # print(o_bestl2)
+            # completely reset adam's internal state.
+            self.sess.run(self.init)
+            batch = imgs[:batch_size]
+            batchlab = labs[:batch_size]
 
             bestl2 = [1e10] * batch_size
             bestscore = [-1] * batch_size
+            bestfpscore = [1e10] * batch_size
 
-            for e, (l2, sc, ii) in enumerate(zip(o_bestl2_inner, o_bestscore_inner, o_bestattack_inner)):
-                if l2 < bestl2[e] and compare(sc, np.argmax(batchlab[e])):
-                    bestl2[e] = l2
-                    bestscore[e] = np.argmax(sc)
-                if l2 < o_bestl2[e] and compare(sc, np.argmax(batchlab[e])):
-                    # print('l2:', l2, 'bestl2[e]: ', bestl2[e])
-                    # print('score:', np.argmax(sc), 'bestscore[e]:', bestscore[e])
-                    # print('np.argmax(batchlab[e]):', np.argmax(batchlab[e]))
-                    o_bestl2[e] = l2
-                    o_bestscore[e] = np.argmax(sc)
-                    o_bestattack[e] = ii
-
-            if self.repeat == True and outer_step_1 == self.BINARY_SEARCH_STEPS_1 - 1:
+            # The last iteration (if we run many steps) repeat the search once.
+            if self.repeat == True and outer_step == self.BINARY_SEARCH_STEPS - 1:
                 CONST = upper_bound
 
-            for e in range(batch_size):
-                    if compare(bestscore[e], np.argmax(batchlab[e])) \
-                            and bestscore[e] != -1:
-                        # success, divide const by two
-                        upper_bound[e] = min(upper_bound[e], CONST[e])
-                        if upper_bound[e] < 1e9:
-                            CONST[e] = (lower_bound[e] + upper_bound[e]) / 2
-                    else:
-                        # failure, either multiply by 10 if no solution found yet
-                        #          or do binary search with the known upper bound
-                        lower_bound[e] = max(lower_bound[e], CONST[e])
-                        if upper_bound[e] < 1e9:
-                            CONST[e] = (lower_bound[e] + upper_bound[e]) / 2
-                        else:
-                            CONST[e] *= 10
+            # set the variables so that we don't have to send them over again
+            self.sess.run(self.setup, {self.assign_timg: batch,
+                                       self.assign_tlab: batchlab,
+                                       self.assign_const: CONST,
+                                       self.assign_alpha: ALPHA
+                                       })
 
+            # get clean logits of clean samples:
+            c_logits = self.sess.run([self.output], feed_dict={K.learning_phase(): 0})
+
+            prev = 1e6
+            for iteration in range(self.MAX_ITERATIONS):
+                # perform the attack
+                _, l, fps,l2s, scores, nimg = self.sess.run([self.train, self.loss,
+                                                         self.fpdist,
+                                                         self.l2dist, self.output,
+                                                         self.newimg], feed_dict={K.learning_phase(): 0})
+
+                # print out the losses every 10%
+                # if iteration % (self.MAX_ITERATIONS // 10) == 0:
+                #     print(iteration, self.sess.run((self.loss, self.loss1, self.loss2, self.grads, self.max_mod), feed_dict={K.learning_phase(): 0}))
+
+                # check if we should abort search if we're getting nowhere.
+                if self.ABORT_EARLY and iteration % (self.MAX_ITERATIONS // 10) == 0:
+                    if l > prev * .9999:
+                        break
+                    prev = l
+
+                # adjust the best result found so far
+                for e, (l2, fp, sc, ii) in enumerate(zip(l2s, fps, scores, nimg)):
+                    if fp < bestfpscore[e] and compare(sc, np.argmax(batchlab[e])):
+                        bestl2[e] = l2
+                        bestscore[e] = np.argmax(sc)
+                        bestfpscore[e] = fp
+
+                    if fp < o_bestfpscore[e] and compare(sc, np.argmax(batchlab[e])):
+                        # print('l2:', l2, 'bestl2[e]: ', bestl2[e])
+                        # print('score:', np.argmax(sc), 'bestscore[e]:', bestscore[e])
+                        # print('np.argmax(batchlab[e]):', np.argmax(batchlab[e]))
+                        o_bestl2[e] = l2
+                        o_bestscore[e] = np.argmax(sc)
+                        o_bestfpscore[e] = fp
+                        o_bestattack[e] = ii
+                        BEST_CONST[e] = CONST[e]
+
+            # adjust the constant as needed
+            for e in range(batch_size):
+                if compare(bestscore[e], np.argmax(batchlab[e])) and bestscore[e] != -1:
+                    # success, divide const by two
+                    upper_bound[e] = min(upper_bound[e], CONST[e])
+                    if upper_bound[e] < 1e9:
+                        CONST[e] = (lower_bound[e] + upper_bound[e]) / 2
+                else:
+                    # failure, either multiply by 10 if no solution found yet
+                    #          or do binary search with the known upper bound
+                    lower_bound[e] = max(lower_bound[e], CONST[e])
+                    if upper_bound[e] < 1e9:
+                        CONST[e] = (lower_bound[e] + upper_bound[e]) / 2
+                    else:
+                        CONST[e] *= 10
+
+        CONST = BEST_CONST
+        for outer_step in range(self.BINARY_SEARCH_STEPS_2):
+            # print(o_bestl2)
+            # completely reset adam's internal state.
+            self.sess.run(self.init)
+            batch = imgs[:batch_size]
+            batchlab = labs[:batch_size]
+
+            bestl2 = [1e10] * batch_size
+            bestscore = [-1] * batch_size
+            bestfpscore = [1e10] * batch_size
+
+            # The last iteration (if we run many steps) repeat the search once.
+            if self.repeat == True and outer_step == self.BINARY_SEARCH_STEPS_2 - 1:
+                ALPHA = lower_bound_2
+
+            # set the variables so that we don't have to send them over again
+            self.sess.run(self.setup, {self.assign_timg: batch,
+                                       self.assign_tlab: batchlab,
+                                       self.assign_const: CONST,
+                                       self.assign_alpha: ALPHA})
+
+
+            prev = 1e6
+            for iteration in range(self.MAX_ITERATIONS):
+                # perform the attack
+                _, l, fps, l2s, scores, nimg = self.sess.run([self.train, self.loss,
+                                                              self.fpdist,
+                                                         self.l2dist, self.output,
+                                                         self.newimg], feed_dict={K.learning_phase(): 0})
+
+                # print out the losses every 10%
+                # if iteration % (self.MAX_ITERATIONS // 10) == 0:
+                #     print(iteration, self.sess.run((self.loss, self.loss1, self.loss2, self.grads, self.max_mod), feed_dict={K.learning_phase(): 0}))
+
+                # check if we should abort search if we're getting nowhere.
+                if self.ABORT_EARLY and iteration % (self.MAX_ITERATIONS // 10) == 0:
+                    if l > prev * .9999:
+                        break
+                    prev = l
+
+                # adjust the best result found so far
+                for e, (l2, fp, sc, ii) in enumerate(zip(l2s, fps, scores, nimg)):
+
+                    if fp < bestfpscore[e] and compare(sc, np.argmax(batchlab[e])):
+                        bestl2[e] = l2
+                        bestscore[e] = np.argmax(sc)
+                        bestfpscore[e] = fp
+
+                    if fp < o_bestfpscore[e] and compare(sc, np.argmax(batchlab[e])):
+                        # print('l2:', l2, 'bestl2[e]: ', bestl2[e])
+                        # print('score:', np.argmax(sc), 'bestscore[e]:', bestscore[e])
+                        # print('np.argmax(batchlab[e]):', np.argmax(batchlab[e]))
+                        o_bestl2[e] = l2
+                        o_bestfpscore[e] = fp
+                        o_bestscore[e] = np.argmax(sc)
+                        o_bestattack[e] = ii
+            # adjust the constant as needed
+
+            for e in range(batch_size):
+                if compare(bestscore[e], np.argmax(batchlab[e])) and bestscore[e] != -1:
+                    # success, divide const by two
+                    lower_bound_2[e] = max(lower_bound_2[e], ALPHA[e])
+
+                    if lower_bound_2[e] >= 0.01:
+                        ALPHA[e] = (lower_bound_2[e] + upper_bound_2[e]) / 2
+                else:
+                    # failure, either multiply by 10 if no solution found yet
+                    #          or do binary search with the known lower bound
+                    upper_bound_2[e] = min(upper_bound_2[e], ALPHA[e])
+                    if lower_bound_2[e] >= 0.01:
+                        ALPHA[e] = (lower_bound_2[e] + upper_bound_2[e]) / 2
+                    else:
+                        ALPHA[e] /= 10
 
         # return the best solution found
         o_bestl2 = np.array(o_bestl2)

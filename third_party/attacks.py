@@ -112,7 +112,7 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
         image_size = ATTACK_PARAMS[dataset]['image_size']
         num_channels = ATTACK_PARAMS[dataset]['num_channels']
         num_labels = ATTACK_PARAMS[dataset]['num_labels']
-        cw_attack = CarliniFP(sess, model, image_size, num_channels, num_labels, batch_size=batch_size,
+        cw_attack = CarliniFP_2vars(sess, model, image_size, num_channels, num_labels, batch_size=batch_size,
                               fp_dir=fp_path)
         X_adv = cw_attack.attack(X, Y)
 

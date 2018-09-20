@@ -158,7 +158,7 @@ with tf.Session() as sess:
         transfer.pytorch_to_keras(pytorch_network, model.model)
         pytorch_network.eval()
         model = model.model
-        batch_size = 16
+        batch_size = 2
         craft_one_type(sess, model, new_X_test, new_Y_test, dataset, 'cw-l2',
                            batch_size, log_path=args.log_dir, 
                            fp_path= args.fingerprint_dir  )
