@@ -145,10 +145,10 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
             'spsa_samples': real_batch_size,
         }   
         batch_shape = X.shape
-        X_input = tf.placeholder(tf.float32, shape=(1,) + batch_shape[1:])
-        Y_label = tf.placeholder(tf.int32, shape=(1,))
+        X_input = tf.placeholder(tf.float32, shape=(1,) + X.shape[1:])
+        Y_label = tf.placeholder(tf.float32, shape=(1,) + Y.shape[1:])
         print("log_dir", fp_path)
-        X_adv_spsa = spsa.generate(X_input, y=Y_label, log_dir=log_path, **spsa_params)
+        X_adv_spsa = spsa.generate(X_input, y=Y_label, log_dir=fp_path, **spsa_params)
     
         # X = (X - np.argmin(X))/(np.argmax(X)-np.argmin(X))
         X_adv = []
