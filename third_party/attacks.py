@@ -117,46 +117,55 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
         X_adv = cw_attack.attack(X, Y)
 
     elif attack == 'spsa':
-        # C&W attack to break LID detector
         print('Crafting %s examples. Using Cleverhans' % attack)
         image_size = ATTACK_PARAMS[dataset]['image_size']
         num_channels = ATTACK_PARAMS[dataset]['num_channels']
         num_labels = ATTACK_PARAMS[dataset]['num_labels']
-	from cleverhans.utils_keras import KerasModelWrapper
-	wrapped_model = KerasModelWrapper(model)
-	wrapped_model.nb_classes = 10 
+
+        from cleverhans.utils_keras import KerasModelWrapper
+        wrapped_model = KerasModelWrapper(model)
+
+        if dataset == "mnist": 
+            wrapped_model.nb_classes = 10 
+        elif dataset == "cifar": 
+            wrapped_model.nb_classes = 10 
+        else:
+            wrapped_model.nb_classes = 10 
+
+        real_batch_size = X.shape[0]
+
         spsa = SPSA(wrapped_model, back='tf', sess=sess)
         spsa_params = {
-	    "epsilon": 4. / 255,
-            'num_steps': 30,
+            "epsilon": 4. / 255,
+            'num_steps': 1,
             'spsa_iters': 1,
             'early_stop_loss_threshold': -1.,
             'is_targeted': False,
-	    'is_debug': True,
-	    'spsa_samples': real_batch_size,
-	}	
-	batch_shape = X.shape
-	X_input = tf.placeholder(tf.float32, shape=(1,) + batch_shape[1:])
-	Y_label = tf.placeholder(tf.int32, shape=(1,))
-	X_adv_spsa = spsa.generate(X_input, y=Y_label, **spsa_params)
-	
-	# X = (X - np.argmin(X))/(np.argmax(X)-np.argmin(X))
+            'is_debug': True,
+            'spsa_samples': real_batch_size,
+        }   
+        batch_shape = X.shape
+        X_input = tf.placeholder(tf.float32, shape=(1,) + batch_shape[1:])
+        Y_label = tf.placeholder(tf.int32, shape=(1,))
+        X_adv_spsa = spsa.generate(X_input, y=Y_label, log_dir=fp_path, **spsa_params)
+    
+        # X = (X - np.argmin(X))/(np.argmax(X)-np.argmin(X))
         X_adv = []
         for i in range(real_batch_size):        
-	    
+        
             # rescale to format TF wants
             _min = np.min(X[i])
             _max = np.max(X[i])
             X_i_norm = (X[i] - _min)/(_max-_min)
-	   
+       
             # Run attack
             res = sess.run(X_adv_spsa, feed_dict={X_input: np.expand_dims(X_i_norm, axis=0), Y_label: np.array([np.argmax(Y[i])])})
-	    
+        
             # Rescale result back to our scale
             X_adv += [(res + _min) * (_max-_min)]
-
-            X_adv = np.concatenate(X_adv, axis=0)
-            # X_adv = spsa.generate_np(X, **spsa_params) 
+            
+        X_adv = np.concatenate(X_adv, axis=0)
+        # X_adv = spsa.generate_np(X, **spsa_params) 
 
     print(X.shape, X_adv.shape, Y.shape)
 

@@ -117,6 +117,19 @@ with tf.Session() as sess:
     pickle.dump({"adv_input":new_X_test,"adv_labels":new_Y_test},f)
     f.close()
 
+    if(args.attack == 'spsa' or args.attack == 'all'):
+        pytorch_network = Net()
+        pytorch_network.load_state_dict(torch.load(args_ckpt))
+        pytorch_network.eval()
+        model = Model(torch_model=pytorch_network,softmax=True)
+        keras_network = model.model
+        transfer.pytorch_to_keras(pytorch_network, model.model)
+        pytorch_network.eval()
+        model = model.model
+        batch_size = 16
+        craft_one_type(sess, model, new_X_test, new_Y_test, dataset, 'spsa',
+                           batch_size, log_path=args.log_dir)
+
     if(args.attack == 'cw-l2' or args.attack == 'all'):
         pytorch_network = Net()
         model = Model(torch_model=pytorch_network,softmax=False)
