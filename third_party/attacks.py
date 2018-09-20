@@ -167,15 +167,14 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
 
     if("adapt" in attack or "fp" in attack):
         [m,_,_,_]=(np.shape(X_adv))
-        print(Y)
         cropped_X_adv = []
         cropped_Y = []
         cropped_X = []
         if(dataset == 'mnist'):
             X_place = tf.placeholder(tf.float32, shape=[1, 1, 28, 28])
             pred = model(X_place)
-        for i in range(batch_size):
-            print(i)
+        print(m)
+        for i in range(m):
             logits_op = sess.run(pred,feed_dict={X_place:X_adv[i:i+1,:,:,:],
                                            K.learning_phase(): 0})
             if(not np.argmax(logits_op) == np.argmax(Y[i,:])):

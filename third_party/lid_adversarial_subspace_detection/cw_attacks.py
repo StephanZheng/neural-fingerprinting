@@ -20,14 +20,14 @@ import os
 # settings for C&W L2 attack
 L2_BINARY_SEARCH_STEPS = 9
 L2_BINARY_SEARCH_STEPS_1 = 9  # number of times to adjust the constant with binary search
-L2_BINARY_SEARCH_STEPS_2 = 9
+L2_BINARY_SEARCH_STEPS_2 = 2
 L2_MAX_ITERATIONS = 1000    # number of iterations to perform gradient descent
 L2_ABORT_EARLY = True       # if we stop improving, abort gradient descent early
 L2_LEARNING_RATE = 1e-2     # larger values converge faster to less accurate results
 L2_TARGETED = True          # should we target one specific class? or just be wrong?
 L2_CONFIDENCE = 0           # how strong the adversarial example should be
 L2_INITIAL_CONST = 1e-3    # the initial constant c to pick as a first guess
-L2_INITIAL_CONST_2 = 0.1   # the initial constanct to choose for the second variable
+L2_INITIAL_CONST_2 = 1   # the initial constanct to choose for the second variable
                            # choose with more fingerprints
 
 class CarliniL2:
@@ -738,7 +738,6 @@ class CarliniFP_2vars:
         # o_bestattack = np.copy(imgs)
 
         for outer_step_1 in range(self.BINARY_SEARCH_STEPS_1):
-            print("trying")
             o_bestl2_inner = [1e10] * batch_size
             o_bestscore_inner = [-1] * batch_size
             o_bestattack_inner = [np.zeros(imgs[0].shape)] * batch_size
