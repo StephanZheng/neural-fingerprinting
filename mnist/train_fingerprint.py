@@ -1,6 +1,6 @@
 from __future__ import print_function
 from collections import defaultdict
-from scipy.stats import ortho_group #For Generating Orthogonal Fingerprint (dys)
+#from scipy.stats import ortho_group #For Generating Orthogonal Fingerprint (dys)
 from torch.autograd import Variable
 from torchvision import datasets, transforms
 import argparse

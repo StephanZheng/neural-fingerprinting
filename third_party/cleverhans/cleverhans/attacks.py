@@ -13,7 +13,6 @@ from cleverhans.compat import reduce_any
 
 _logger = utils.create_logger("cleverhans.attacks")
 
-
 class Attack(object):
     """
     Abstract base class for all attack classes.
@@ -1759,7 +1758,7 @@ class SPSA(Attack):
 
     def generate(self,
                  x,
-                 log_dir=None,
+                 fp_path=None,
                  y=None,
                  y_target=None,
                  epsilon=None,
@@ -1816,10 +1815,12 @@ class SPSA(Attack):
 
         import cPickle as pickle
         import os
-        print("log_dir", log_dir)
-        fingerprint_dir = log_dir
+        print("fp_path", fp_path)
+        fingerprint_dir = fp_path
         fixed_dxs = pickle.load(open(os.path.join(fingerprint_dir, "fp_inputs_dx.pkl"), "rb"))
         fixed_dys = pickle.load(open(os.path.join(fingerprint_dir, "fp_outputs.pkl"), "rb"))
+
+        import tensorflow as tf
 
         if y is None:
             # In this case, use model predictions as ground truth
@@ -1828,7 +1829,6 @@ class SPSA(Attack):
                          tf.reduce_max(predictions, 1, keep_dims=True)))
 
         output = logits
-        print(np.shape(logits))
         pred_class = tf.argmax(y,axis=1)
         loss_fp = 0
         [a,b,c] = np.shape(fixed_dys)
@@ -1838,12 +1838,11 @@ class SPSA(Attack):
         norm_logits = output/tf.norm(output)
 
         for i in range(num_dx):
-            logits_p = model_logits(x + fixed_dxs[i])
+            logits_p = self.model.get_logits(x + fixed_dxs[i])
             logits_p_norm = logits_p/tf.norm(logits_p)
-            loss_fp = loss_fp + tf.losses.mean_squared_error((logits_p_norm - norm_logits),target_dys[:,i,:])
+            loss_fp = loss_fp + tf.losses.mean_squared_error((logits_p_norm-norm_logits), 
+                                                            target_dys[:,i,:])
             #self appropriate fingerprint
-
-        print(loss_fp)
 
         def loss_fn(x, label):
             logits = self.model.get_logits(x)
@@ -1851,7 +1850,8 @@ class SPSA(Attack):
             class_loss = loss_multiplier * margin_logit_loss(
                 logits, label, num_classes=self.model.nb_classes)
             alpha = 0.1
-            return class_loss - alpha * fp_loss
+            print "what is this", class_loss, loss_fp
+            return class_loss - alpha * loss_fp
 
         y_attack = y_target if is_targeted else y
         adv_x = pgd_attack(

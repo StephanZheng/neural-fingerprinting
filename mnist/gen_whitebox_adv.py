@@ -143,7 +143,7 @@ with tf.Session() as sess:
         model = model.model
         batch_size = 16
         craft_one_type(sess, model, new_X_test, new_Y_test, dataset, 'spsa',
-                           batch_size, log_path=args.log_dir)
+                           batch_size, fp_path=args.fingerprint_dir)
 
     if(args.attack == 'cw-l2' or args.attack == 'all'):
         #No softmax for Carlini attack

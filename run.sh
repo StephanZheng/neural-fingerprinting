@@ -20,8 +20,8 @@ EPOCHS=$8
 fi
 
 if [ "$1" = "mnist" ]; then
-NUM_EPOCHS=2
-EPOCHS="2"
+NUM_EPOCHS=1
+EPOCHS="1"
 fi
 
 
@@ -74,7 +74,7 @@ fi
 
 for EPOCH in $EPOCHS; do
 
-ADV_EX_DIR=$LOGDIR/adv_examples/epoch_$epoch
+ADV_EX_DIR=$LOGDIR/adv_examples/epoch_$EPOCH
 mkdir -p $ADV_EX_DIR
 
 
@@ -84,6 +84,9 @@ if [ "$3" = "attack" ]; then
 for ATCK in 'spsa'; do # 'adapt-fgsm'; do #  'all'; do
 # Write out the different attacks, use 'all' to generate all attacks for same random subset of test
 # For now copy paste this list into eval_fingerprint :) Will figure out a fix later
+
+echo "epoch" $EPOCH $ADV_EX_DIR
+echo $LOGDIR
 
 python2 $1/gen_whitebox_adv.py \
 --attack $ATCK \
