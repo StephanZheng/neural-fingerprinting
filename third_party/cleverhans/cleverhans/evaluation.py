@@ -7,7 +7,7 @@ from distutils.version import LooseVersion
 import numpy as np
 from six.moves import range
 import tensorflow as tf
-
+import warnings
 from cleverhans.utils import create_logger
 from cleverhans.utils_tf import infer_devices
 

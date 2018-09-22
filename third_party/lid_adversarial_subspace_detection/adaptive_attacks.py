@@ -19,7 +19,9 @@ import os
 import pickle
 
 def adaptive_fgsm(x, predictions, eps, clip_min=None, clip_max=None,
-                  log_dir=None, y=None, model_logits = None):
+                  log_dir=None, y=None, model_logits = None,
+                  alpha = None
+                  ):
     """
     Computes symbolic TF tensor for the adversarial samples. This must
     be evaluated with a session.run call.
@@ -68,7 +70,6 @@ def adaptive_fgsm(x, predictions, eps, clip_min=None, clip_max=None,
     loss_ce = tf.reduce_mean(
         tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=y)
     )
-    alpha = 0.1
     ## Tune this alpha!!
 
     loss = loss_ce - alpha*loss_fp
@@ -94,7 +95,7 @@ def adaptive_fgsm(x, predictions, eps, clip_min=None, clip_max=None,
 
 def adaptive_fast_gradient_sign_method(sess, model, X, Y, eps, clip_min=None,
                               clip_max=None, batch_size=256, log_dir = None,
-                                       model_logits = None):
+                                       model_logits = None, binary_steps =2):
     """
     TODO
     :param sess:
@@ -110,23 +111,56 @@ def adaptive_fast_gradient_sign_method(sess, model, X, Y, eps, clip_min=None,
     # Define TF placeholders for the input and output
     x = tf.placeholder(tf.float32, shape=(None,) + X.shape[1:])
     y = tf.placeholder(tf.float32, shape=(None,) + Y.shape[1:])
-    adv_x = adaptive_fgsm(
-        x, model(x), eps=eps,
-        clip_min=clip_min,
-        clip_max=clip_max, y=y,
-        log_dir= log_dir,
-        model_logits = model_logits
-    )
-    X_adv, = batch_eval(
-        sess, [x, y], [adv_x],
-        [X, Y], feed={K.learning_phase(): 0},
-        args={'batch_size': batch_size}
-    )
-    return X_adv
+    alpha = tf.placeholder(tf.float32, shape=(None,) + (1,))
+    num_samples = np.shape(X)[0]
+    ALPHA = 0.1*np.ones((num_samples,1))
+    ub = 10.0*np.ones(num_samples)
+    lb = 0.0*np.ones(num_samples)
+    Best_X_adv = None
+    for i in range(binary_steps):
+        adv_x = adaptive_fgsm(
+            x, model(x), eps=eps,
+            clip_min=clip_min,
+            clip_max=clip_max, y=y,
+            log_dir= log_dir,
+            model_logits = model_logits,
+            alpha = alpha
+        )
+        X_adv, = batch_eval(
+            sess, [x, y, alpha], [adv_x],
+            [X, Y, ALPHA], feed={K.learning_phase(): 0},
+            args={'batch_size': batch_size}
+        )
 
+        if(i==0):
+            Best_X_adv = X_adv
+
+        ALPHA, Best_X_adv = binary_refinement(sess,Best_X_adv,
+                      X_adv, Y, ALPHA, ub, lb, model)
+
+    return Best_X_adv
+
+
+def binary_refinement(sess,Best_X_adv,
+                      X_adv, Y, ALPHA, ub, lb, model, dataset='mnist'):
+    num_samples = np.shape(X_adv)[0]
+    X_place = tf.placeholder(tf.float32, shape=[1, 1, 28, 28])
+    pred = model(X_place)
+    for i in range(num_samples):
+        logits_op = sess.run(pred,feed_dict={X_place:X_adv[i:i+1,:,:,:],
+                                           K.learning_phase(): 0})
+        if(not np.argmax(logits_op) == np.argmax(Y[i,:])):
+            # Success, increase alpha
+            Best_X_adv[i,:,:,:] = X_adv[i,:,:,]
+            lb[i] = ALPHA[i,0]
+        else:
+            ub[i] = ALPHA[i,0]
+        ALPHA[i] = 0.5*(lb[i] + ub[i])
+    return ALPHA, Best_X_adv
 
 def adaptive_basic_iterative_method(sess, model, X, Y, eps, eps_iter, nb_iter=50,
-                           clip_min=None, clip_max=None, batch_size=256):
+                           clip_min=None, clip_max=None, batch_size=256,
+                                    ):
     """
     TODO
     :param sess:

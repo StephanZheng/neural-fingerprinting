@@ -204,7 +204,6 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
     f.close()
 
     print("Model accuracy on the test set: %0.2f%%" % (100.0 * acc))
-
     l2_diff = np.linalg.norm(
         X_adv.reshape((len(X), -1)) -
         X.reshape((len(X), -1)),
