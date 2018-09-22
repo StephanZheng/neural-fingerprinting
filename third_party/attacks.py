@@ -75,6 +75,15 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
             log_dir = fp_path,
             model_logits = model_logits,
         )
+    elif attack == 'adapt-bim-b':
+        # BIM attack
+        print('Crafting %s adversarial samples...' % attack)
+        X_adv = adaptive_basic_iterative_method(
+            sess, model, X, Y, eps=ATTACK_PARAMS[dataset]['eps'],
+            eps_iter=ATTACK_PARAMS[dataset]['eps_iter'], clip_min=CLIP_MIN,
+            clip_max=CLIP_MAX, batch_size=batch_size,
+            log_dir = fp_path,
+            model_logits = model_logits )
     elif attack in ['bim-a', 'bim-b']:
         # BIM attack
         print('Crafting %s adversarial samples...' % attack)

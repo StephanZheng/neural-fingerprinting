@@ -189,7 +189,7 @@ with tf.Session() as sess:
                                  config['log_dir'])
         evaluate_checkpoint(sess,model)
 
-    if(args.attack in ['adapt-fgsm','adapt-bim-a','adapt-all']):
+    if(args.attack in ['adapt-fgsm','adapt-bim-b','adapt-all']):
         # FGSM, BIM-a, JSMA
         #
         pytorch_network = Net()
@@ -206,7 +206,7 @@ with tf.Session() as sess:
         model = model.model
         model_logits = model.model
         if(args.attack == 'adapt-all'):
-            for attack in ['adapt-fgsm','adapt-bim-a']:
+            for attack in ['adapt-fgsm','adapt-bim-b']:
                 (X_adv,Y_adv) = craft_one_type(sess, model, new_X_test, new_Y_test, dataset, attack,
                                args.batch_size, log_path=args.log_dir, fp_path= args.fingerprint_dir,
                                                model_logits = model_logits)
