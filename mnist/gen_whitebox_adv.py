@@ -110,11 +110,9 @@ def evaluate_checkpoint(sess,model):
     f.close()
 
 
-with tf.Session() as sess:
-
+if(1>0):
     dataset = 'mnist'
-    K.set_session(sess)
-    K.set_image_data_format('channels_first')
+
 
     _, _, X_test, Y_test = get_data(dataset)
     num_samples = np.shape(X_test)[0]
@@ -131,7 +129,11 @@ with tf.Session() as sess:
     print(os.path.join(args.log_dir,'Random_Test_%s_.p' % (dataset)))
     pickle.dump({"adv_input":new_X_test,"adv_labels":new_Y_test},f)
     f.close()
+    
+with tf.Session() as sess:
 
+    K.set_session(sess)
+    K.set_image_data_format('channels_first')
     if(args.attack == 'spsa' or args.attack == 'all'):        
         pytorch_network = Net()
         pytorch_network.load_state_dict(torch.load(args_ckpt))
