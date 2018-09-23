@@ -34,6 +34,8 @@ parser.add_argument('--attack', default="fgsm")
 parser.add_argument('--batch-size',type=int, default=128)
 parser.add_argument('--ckpt', default="/tmp/stephan/logs/cifar/ckpt/state_dict-ep_1.pth")
 parser.add_argument('--log-dir', type=str, default="/tmp/stephan/logs/cifar/adv_examples")
+parser.add_argument('--fingerprint-dir', type=str, default="/tmp/logs/neural_fingerprint/cifar/eps_0.1/numdx_5")
+
 args = parser.parse_args()
 
 with open('./cifar/config.json') as config_file:
