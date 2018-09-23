@@ -220,10 +220,7 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
     ).mean()
     print("Average L-2 perturbation size of the %s attack: %0.2f" %
           (attack, l2_diff))
-    if(not "adapt" in attack):
-        return (X_adv,Y)
-    else:
-        return(X, X_adv, Y)
+    return (X_adv,Y)
 
 def main(args):
     assert args.dataset in ['mnist', 'cifar', 'svhn'], \
