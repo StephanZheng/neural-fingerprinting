@@ -257,7 +257,7 @@ if(args.attack in ['adapt-fgsm','adapt-bim-b','adapt-all']):
                             split_start = int((i)*(1.0/num_samples)*num_rand_samples)
                             split_end = int((i+1)*(1.0/num_samples)*num_rand_samples)
                             (cropped_X_test, X_adv,Y_adv) = craft_one_type(sess, model, new_X_test[split_start:split_end,:,:,:],
-                                                               new_Y_test[0:,:], dataset, args.attack,
+                                                               new_Y_test[split_start:split_end,:], dataset, args.attack,
                                    args.batch_size, log_path=args.log_dir, fp_path= args.fingerprint_dir,
                                                model_logits = model_logits)
                             if(i==0):
