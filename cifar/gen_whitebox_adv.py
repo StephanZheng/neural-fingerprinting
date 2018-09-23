@@ -110,7 +110,7 @@ with tf.Session() as sess:
     # Sample random test data
     _, _, X_test, Y_test = get_data(dataset)
     num_samples = np.shape(X_test)[0]
-    num_rand_samples = 16
+    num_rand_samples = 1328
     random_samples = np.random.randint(0,num_samples, num_rand_samples)
     new_X_test = X_test[random_samples,:,:,:]
     new_Y_test = Y_test[random_samples,:]
@@ -173,8 +173,8 @@ with tf.Session() as sess:
             (X_cropped, X_adv,Y_adv) = craft_one_type(sess, model, new_X_test, new_Y_test, dataset, args.attack,
                                args.batch_size, log_path=args.log_dir, fp_path= args.fingerprint_dir,
                                            model_logits = model_logits)
-        f = open(os.path.join(args.log_dir,'Random_Test_%s_.p' % (dataset)),'w')
-        print(os.path.join(args.log_dir,'Random_Test_%s_.p' % (dataset)))
+        f = open(os.path.join(args.log_dir,'Random_Test_%s_%s.p' % (dataset, args.attack)),'w')
+        print(os.path.join(args.log_dir,'Random_Test_%s_%s.p' % (dataset, args.attack)))
         pickle.dump({"adv_input":X_cropped,"adv_labels":Y_adv},f)
         f.close()
 
@@ -192,8 +192,8 @@ with tf.Session() as sess:
         (X_cropped, X_adv,Y_adv) = craft_one_type(sess, model, new_X_test, new_Y_test, dataset, 'cw-fp',
                            batch_size, log_path=args.log_dir, fp_path= args.fingerprint_dir)
 
-        f = open(os.path.join(args.log_dir,'Random_Test_%s_.p' % (dataset)),'w')
-        print(os.path.join(args.log_dir,'Random_Test_%s_.p' % (dataset)))
+        f = open(os.path.join(args.log_dir,'Random_Test_%s_.p' % (dataset, args.attack)),'w')
+        print(os.path.join(args.log_dir,'Random_Test_%s_.p' % (dataset, args.attack)))
         pickle.dump({"adv_input":X_cropped,"adv_labels":Y_adv},f)
         f.close()
 

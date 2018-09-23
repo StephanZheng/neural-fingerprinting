@@ -88,7 +88,7 @@ random_loader = torch.utils.data.DataLoader(
     custom_datasets.RandomCIFAR10(args.data_dir, transform=transform),
     batch_size=args.batch_size, shuffle=False, **kwargs)
 """
-list_advs = ["fgsm", "bim-a", "bim-b", "jsma", "cw-l2"] # ['fgsm']
+list_advs = ["adapt-fgsm", "cw-fp"] # ['fgsm']
 # List of attacks, copy from run_search
 dataset = 'cifar'
 list_adv_loader=[]
@@ -99,17 +99,6 @@ for advs in list_advs:
             custom_datasets.Adv(filename=attack_file, transp=True),
             batch_size=args.batch_size, shuffle=False, **kwargs)
     list_adv_loader.append(adv_loader)
-
-# Load noise injected data
-list_noisy_names=[]
-list_noisy_loader=[]
-for advs in list_advs:
-    list_noisy_names.append('noisy_'+advs)
-    attack_file = os.path.join(args.adv_ex_dir, 'Noisy_%s_%s.p' % (dataset, advs))
-    adv_loader= torch.utils.data.DataLoader(
-            custom_datasets.Adv(filename=attack_file, transp=True),
-            batch_size=args.batch_size, shuffle=False, **kwargs)
-    list_noisy_loader.append(adv_loader)
 
 from model import CW2_Net as Net
 #from small_model import Very_Small_Net as Net
@@ -136,10 +125,10 @@ fp.dys = fixed_dys
 
 loaders = [test_loader]
 loaders.extend(list_adv_loader)
-loaders.extend(list_noisy_loader)
+
 names = ["test"]
 names.extend(list_advs)
-names.extend(list_noisy_names)
+
 
 reject_thresholds = \
 [0. + 0.001 * i for i in range(2000)]
@@ -163,13 +152,7 @@ for data_loader, ds_name in zip(loaders, names):
 
 # Get precision / recall where positive examples = adversarials, negative examples = real inputs.
 for item,advs in enumerate(list_advs):
-    print("AUC-ROC for %s",advs)
-    print("With Noisy Data -- Total 30000 samples")
-    pos_names = [advs] # advs
-    neg_names = [names[0]] # test
-    neg_names.append(list_noisy_names[item]) #Noisy data
-    fp_eval.get_pr_wrapper(results, pos_names, neg_names, reject_thresholds, args)
-
+    print("AUC-ROC")
     print("Without Noisy Data -- Total 20000 samples")
     pos_names = [advs] # advs
     neg_names = [names[0]] # test

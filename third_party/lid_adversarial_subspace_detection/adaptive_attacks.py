@@ -95,8 +95,8 @@ def adaptive_fgsm(x, predictions, eps, clip_min=None, clip_max=None,
 
 def adaptive_fast_gradient_sign_method(sess, model, X, Y, eps, clip_min=None,
                               clip_max=None, batch_size=256, log_dir = None,
-                                       model_logits = None, binary_steps = 18,
-                                        dataset="mnist"):
+                                       model_logits = None, binary_steps = 12,
+                                        dataset="cifar"):
     """
     TODO
     :param sess:
@@ -119,6 +119,7 @@ def adaptive_fast_gradient_sign_method(sess, model, X, Y, eps, clip_min=None,
     lb = 0.0*np.ones(num_samples)
     Best_X_adv = None
     for i in range(binary_steps):
+        print(i)
         adv_x = adaptive_fgsm(
             x, model(x), eps=eps,
             clip_min=clip_min,
@@ -143,12 +144,12 @@ def adaptive_fast_gradient_sign_method(sess, model, X, Y, eps, clip_min=None,
 
 
 def binary_refinement(sess,Best_X_adv,
-                      X_adv, Y, ALPHA, ub, lb, model, dataset='mnist'):
+                      X_adv, Y, ALPHA, ub, lb, model, dataset='cifar'):
     num_samples = np.shape(X_adv)[0]
     if(dataset=="mnist"):
         X_place = tf.placeholder(tf.float32, shape=[1, 1, 28, 28])
     else:
-        X_place = tf.placeholder(tf.float32, shape=[1, 3, 28, 28])
+        X_place = tf.placeholder(tf.float32, shape=[1, 3, 32, 32])
 
     pred = model(X_place)
     for i in range(num_samples):
@@ -167,7 +168,7 @@ def adaptive_basic_iterative_method(sess, model, X, Y, eps, eps_iter, nb_iter=50
                            clip_min=None, clip_max=None, batch_size=256,
                            log_dir = None, model_logits = None,
                                      binary_steps =9, attack_type = "bim-b",
-                                     dataset="mnist"):
+                                     dataset="cifar"):
     """
     TODO
     :param sess:
