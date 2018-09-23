@@ -129,7 +129,7 @@ if(1>0):
     print(os.path.join(args.log_dir,'Random_Test_%s_.p' % (dataset)))
     pickle.dump({"adv_input":new_X_test,"adv_labels":new_Y_test},f)
     f.close()
-    
+
 with tf.Session() as sess:
 
     K.set_session(sess)
@@ -208,7 +208,7 @@ with tf.Session() as sess:
         model = model.model
         model_logits = model.model
         if(args.attack == 'adapt-all'):
-            for attack in ['adapt-fgsm']:
+            for attack in ['adapt-fgsm',"adapt-bim-b"]:
                 (X_cropped, X_adv,Y_adv) = craft_one_type(sess, model, new_X_test, new_Y_test, dataset, attack,
                                args.batch_size, log_path=args.log_dir, fp_path= args.fingerprint_dir,
                                                model_logits = model_logits)
@@ -264,7 +264,7 @@ with tf.Session() as sess:
 
 
     sess.close()
-
+"""
 if(args.attack in ['adapt-bim-b','adapt-all']):
     num_splits = 5
     net_Y = None
@@ -342,3 +342,4 @@ if(args.attack in ['adapt-bim-b','adapt-all']):
         pickle.dump({"adv_input":X_cropped,"adv_labels":net_Y},f)
         f.close()
     sess.close()
+"""
