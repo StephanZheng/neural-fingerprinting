@@ -156,7 +156,6 @@ def binary_refinement(sess,Best_X_adv,
         else:
             ub[i] = ALPHA[i,0]
         ALPHA[i] = 0.5*(lb[i] + ub[i])
-    print(ALPHA)
     return ALPHA, Best_X_adv
 
 def adaptive_basic_iterative_method(sess, model, X, Y, eps, eps_iter, nb_iter=50,
