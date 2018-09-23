@@ -148,10 +148,10 @@ for epoch in range(1, args.epochs + 1):
     fp_train.train(epoch, args, model, optimizer, train_loader, fp.dxs, fp.dys)
     test_loss = fp_train.test(epoch, args, model, test_loader, fp.dxs, fp.dys, test_length=0.1*len(valid_dataset))
     val_losses.append(test_loss)
-    loss_flag = 0
-    for i in range(2,5):
-        if(epoch<=15 or val_losses[-1]<val_losses[-i]):
-           loss_flag = 1
+    loss_flag = 1
+    #for i in range(2,5):
+    #    if(epoch<=15 or val_losses[-1]<val_losses[-i]):
+    #       loss_flag = 1
 
     path = os.path.join(args.log_dir, "ckpt", "state_dict-ep_{}.pth".format(epoch))
     print("Saving model in", path)
