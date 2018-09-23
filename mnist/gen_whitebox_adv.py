@@ -229,7 +229,7 @@ with tf.Session() as sess:
 
     sess.close()
 if(args.attack in ['adapt-fgsm','adapt-bim-b','adapt-all']):
-            if(attack == 'adapt-bim-b'):
+            if(args.attack == 'adapt-bim-b'):
                     # Binary search overflows ram, memory leak somewhere?
                     num_splits = 5
                     for i in range(num_splits):

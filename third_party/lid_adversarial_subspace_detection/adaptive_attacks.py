@@ -159,7 +159,7 @@ def binary_refinement(sess,Best_X_adv,
     print(ALPHA)
     return ALPHA, Best_X_adv
 
-def adaptive_basic_iterative_method(sess, model, X, Y, eps, eps_iter, nb_iter=50,
+def adaptive_basic_iterative_method(sess, model, X, Y, eps, eps_iter, nb_iter=5,
                            clip_min=None, clip_max=None, batch_size=256,
                            log_dir = None, model_logits = None,
                                      binary_steps =9, attack_type = "bim-b"):
