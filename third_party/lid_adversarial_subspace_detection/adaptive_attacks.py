@@ -95,7 +95,8 @@ def adaptive_fgsm(x, predictions, eps, clip_min=None, clip_max=None,
 
 def adaptive_fast_gradient_sign_method(sess, model, X, Y, eps, clip_min=None,
                               clip_max=None, batch_size=256, log_dir = None,
-                                       model_logits = None, binary_steps = 18):
+                                       model_logits = None, binary_steps = 18,
+                                        dataset="mnist"):
     """
     TODO
     :param sess:
@@ -136,7 +137,7 @@ def adaptive_fast_gradient_sign_method(sess, model, X, Y, eps, clip_min=None,
             Best_X_adv = X_adv
 
         ALPHA, Best_X_adv = binary_refinement(sess,Best_X_adv,
-                      X_adv, Y, ALPHA, ub, lb, model)
+                      X_adv, Y, ALPHA, ub, lb, model,dataset)
 
     return Best_X_adv
 
@@ -144,7 +145,11 @@ def adaptive_fast_gradient_sign_method(sess, model, X, Y, eps, clip_min=None,
 def binary_refinement(sess,Best_X_adv,
                       X_adv, Y, ALPHA, ub, lb, model, dataset='mnist'):
     num_samples = np.shape(X_adv)[0]
-    X_place = tf.placeholder(tf.float32, shape=[1, 1, 28, 28])
+    if(dataset=="mnist"):
+        X_place = tf.placeholder(tf.float32, shape=[1, 1, 28, 28])
+    else:
+        X_place = tf.placeholder(tf.float32, shape=[1, 3, 28, 28])
+
     pred = model(X_place)
     for i in range(num_samples):
         logits_op = sess.run(pred,feed_dict={X_place:X_adv[i:i+1,:,:,:],
@@ -161,7 +166,8 @@ def binary_refinement(sess,Best_X_adv,
 def adaptive_basic_iterative_method(sess, model, X, Y, eps, eps_iter, nb_iter=50,
                            clip_min=None, clip_max=None, batch_size=256,
                            log_dir = None, model_logits = None,
-                                     binary_steps =9, attack_type = "bim-b"):
+                                     binary_steps =9, attack_type = "bim-b",
+                                     dataset="mnist"):
     """
     TODO
     :param sess:
@@ -232,5 +238,5 @@ def adaptive_basic_iterative_method(sess, model, X, Y, eps, eps_iter, nb_iter=50
         if(j==0):
             Best_X_adv = X_adv
         ALPHA, Best_X_adv = binary_refinement(sess,Best_X_adv,
-                      X_adv, Y, ALPHA, ub, lb, model)
+                      X_adv, Y, ALPHA, ub, lb, model, dataset)
     return Best_X_adv
