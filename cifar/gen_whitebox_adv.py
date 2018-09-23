@@ -26,8 +26,8 @@ import sys
 sys.path.insert(0, './cifar/')
 #Set path for attack code
 sys.path.insert(0, './mnist/')
-from src.util import (get_data, cross_entropy)
-from attacks import craft_one_type
+from third_party.lid_adversarial_subspace_detection.util import (get_data, cross_entropy)
+from third_party.attacks import craft_one_type
 # Global constants
 parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
 parser.add_argument('--attack', default="fgsm")
