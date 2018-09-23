@@ -189,78 +189,6 @@ with tf.Session() as sess:
                                  config['log_dir'])
         evaluate_checkpoint(sess,model)
 
-    if(args.attack in ['adapt-fgsm','adapt-bim-b','adapt-all']):
-        # FGSM, BIM-a, JSMA
-        #
-        pytorch_network = Net()
-        pytorch_network.load_state_dict(torch.load(args_ckpt))
-        pytorch_network.eval()
-        model_logits  = Model(torch_model=pytorch_network)
-        model  = Model(torch_model=pytorch_network)
-        keras_network = model.model
-        pytorch_network.eval()
-        transfer.pytorch_to_keras(pytorch_network, model.model)
-        transfer.pytorch_to_keras(pytorch_network, model_logits.model)
-        #util.test_tf2torch( model.model, pytorch_network,(1, 28, 28), num_rand_inp=10, precision=10**-2)
-        # Add tests to ensure model is transferred well
-        model = model.model
-        model_logits = model.model
-        if(args.attack == 'adapt-all'):
-            for attack in ['adapt-fgsm','adapt-bim-b']:
-                (X_adv,Y_adv) = craft_one_type(sess, model, new_X_test, new_Y_test, dataset, attack,
-                               args.batch_size, log_path=args.log_dir, fp_path= args.fingerprint_dir,
-                                               model_logits = model_logits)
-        else:
-            if(attack == 'adapt-bim-b'):
-                    # Binary search overflows ram, memory leak somewhere?
-                    K.clear_session()
-                    K.set_session(sess)
-                    K.set_image_data_format('channels_first')
-                    pytorch_network = Net()
-                    pytorch_network.load_state_dict(torch.load(args_ckpt))
-                    pytorch_network.eval()
-                    model_logits  = Model(torch_model=pytorch_network)
-                    model  = Model(torch_model=pytorch_network)
-                    keras_network = model.model
-                    pytorch_network.eval()
-                    transfer.pytorch_to_keras(pytorch_network, model.model)
-                    transfer.pytorch_to_keras(pytorch_network, model_logits.model)
-                    #util.test_tf2torch( model.model, pytorch_network,(1, 28, 28), num_rand_inp=10, precision=10**-2)
-                    # Add tests to ensure model is transferred well
-                    model = model.model
-                    model_logits = model.model
-                    net_X_adv = None
-                    net_Y_adv = None
-                    net_cropped_X_test = None
-                    num_splits = 5
-
-                    for i in range(num_splits):
-                        (cropped_X_test, X_adv,Y_adv) = craft_one_type(sess, model, new_X_test[0:(i+1)*0.2*num_rand_samples,:,:,:],
-                                                           new_Y_test[0:,:], dataset, args.attack,
-                               args.batch_size, log_path=args.log_dir, fp_path= args.fingerprint_dir,
-                                           model_logits = model_logits)
-                        if(i==0):
-                            net_X_adv = X_adv
-                            net_Y_adv = Y_adv
-                            net_cropped_X_test = cropped_X_test
-                        else:
-                            net_X_adv = np.concatenate((X_adv,net_X_adv),axis=0)
-                            net_Y_adv = np.concatenate((Y_adv,net_Y_adv),axis=0)
-                            net_cropped_X_test = np.concatenate((cropped_X_test, net_cropped_X_test), axis=0)
-
-                    f = open(os.path.join(args.log_dir,'Adv_%s_%s.p' % (dataset, attack)),'w')
-                    pickle.dump({"adv_input":net_X_adv,"adv_labels":new_Y_test},f)
-                    f.close()
-
-            else:
-                (net_cropped_X_test, X_adv,Y_adv) = craft_one_type(sess, model, new_X_test, new_Y_test, dataset, args.attack,
-                               args.batch_size, log_path=args.log_dir, fp_path= args.fingerprint_dir,
-                                           model_logits = model_logits)
-
-            f = open(os.path.join(args.log_dir,'Random_Test_%s_.p' % (dataset)),'w')
-            print(os.path.join(args.log_dir,'Random_Test_%s_.p' % (dataset)))
-            pickle.dump({"adv_input":net_cropped_X_test,"adv_labels":Y_adv},f)
-            f.close()
     if(args.attack == 'cw-fp' or args.attack == 'all'):
         #No softmax for Carlini attack
         pytorch_network = Net()
@@ -300,3 +228,75 @@ with tf.Session() as sess:
 
 
     sess.close()
+if(args.attack in ['adapt-fgsm','adapt-bim-b','adapt-all']):
+            if(attack == 'adapt-bim-b'):
+                    # Binary search overflows ram, memory leak somewhere?
+                    num_splits = 5
+                    for i in range(num_splits):
+
+                        K.clear_session()
+                        with tf.Session() as ess:
+                            K.set_session(sess)
+                            K.set_image_data_format('channels_first')
+                            pytorch_network = Net()
+                            pytorch_network.load_state_dict(torch.load(args_ckpt))
+                            pytorch_network.eval()
+                            model_logits  = Model(torch_model=pytorch_network)
+                            model  = Model(torch_model=pytorch_network)
+                            keras_network = model.model
+                            pytorch_network.eval()
+                            transfer.pytorch_to_keras(pytorch_network, model.model)
+                            transfer.pytorch_to_keras(pytorch_network, model_logits.model)
+                            #util.test_tf2torch( model.model, pytorch_network,(1, 28, 28), num_rand_inp=10, precision=10**-2)
+                            # Add tests to ensure model is transferred well
+                            model = model.model
+                            model_logits = model.model
+                            net_X_adv = None
+                            net_Y_adv = None
+                            net_cropped_X_test = None
+
+                            (cropped_X_test, X_adv,Y_adv) = craft_one_type(sess, model, new_X_test[0:(i+1)*0.2*num_rand_samples,:,:,:],
+                                                               new_Y_test[0:,:], dataset, args.attack,
+                                   args.batch_size, log_path=args.log_dir, fp_path= args.fingerprint_dir,
+                                               model_logits = model_logits)
+                            if(i==0):
+                                net_X_adv = X_adv
+                                net_Y_adv = Y_adv
+                                net_cropped_X_test = cropped_X_test
+                            else:
+                                net_X_adv = np.concatenate((X_adv,net_X_adv),axis=0)
+                                net_Y_adv = np.concatenate((Y_adv,net_Y_adv),axis=0)
+                                net_cropped_X_test = np.concatenate((cropped_X_test, net_cropped_X_test), axis=0)
+
+                        f = open(os.path.join(args.log_dir,'Adv_%s_%s.p' % (dataset, attack)),'w')
+                        pickle.dump({"adv_input":net_X_adv,"adv_labels":net_Y_adv},f)
+                        f.close()
+                        sess.close()
+
+            else:
+                    K.clear_session()
+                    with tf.Session() as ess:
+                        K.set_session(sess)
+                        K.set_image_data_format('channels_first')
+                        pytorch_network = Net()
+                        pytorch_network.load_state_dict(torch.load(args_ckpt))
+                        pytorch_network.eval()
+                        model_logits  = Model(torch_model=pytorch_network)
+                        model  = Model(torch_model=pytorch_network)
+                        keras_network = model.model
+                        pytorch_network.eval()
+                        transfer.pytorch_to_keras(pytorch_network, model.model)
+                        transfer.pytorch_to_keras(pytorch_network, model_logits.model)
+
+                        model = model.model
+                        model_logits = model.model
+                        (net_cropped_X_test, X_adv,Y_adv) = craft_one_type(sess, model, new_X_test, new_Y_test, dataset, args.attack,
+                                       args.batch_size, log_path=args.log_dir, fp_path= args.fingerprint_dir,
+                                                   model_logits = model_logits)
+                    sess.close()
+
+            f = open(os.path.join(args.log_dir,'Random_Test_%s_.p' % (dataset)),'w')
+            print(os.path.join(args.log_dir,'Random_Test_%s_.p' % (dataset)))
+            pickle.dump({"adv_input":net_cropped_X_test,"adv_labels":net_Y_adv},f)
+            f.close()
+
