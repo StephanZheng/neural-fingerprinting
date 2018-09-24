@@ -81,7 +81,7 @@ mkdir -p $ADV_EX_DIR
 # Generate attacks
 if [ "$3" = "attack" ]; then
 
-for ATCK in 'spsa'; do # 'adapt-fgsm'; do #  'all'; do
+for ATCK in 'spsa'; do #'spsa' 'adapt-fgsm'; do #  'all'; do
 # Write out the different attacks, use 'all' to generate all attacks for same random subset of test
 # For now copy paste this list into eval_fingerprint :) Will figure out a fix later
 

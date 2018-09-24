@@ -3,7 +3,7 @@ import numpy as np
 from six.moves import xrange
 import warnings
 import collections
-
+import tensorflow as tf
 import cleverhans.utils as utils
 from cleverhans.model import Model, CallableModelWrapper
 from distutils.version import LooseVersion
@@ -1815,7 +1815,7 @@ class SPSA(Attack):
 
         import cPickle as pickle
         import os
-        print("fp_path", fp_path)
+
         fingerprint_dir = fp_path
         fixed_dxs = pickle.load(open(os.path.join(fingerprint_dir, "fp_inputs_dx.pkl"), "rb"))
         fixed_dys = pickle.load(open(os.path.join(fingerprint_dir, "fp_outputs.pkl"), "rb"))
@@ -1829,19 +1829,20 @@ class SPSA(Attack):
                          tf.reduce_max(predictions, 1, keep_dims=True)))
 
         output = logits
-        pred_class = tf.argmax(y,axis=1)
+        y = tf.Print(y, [y])
+        pred_class = y      
         loss_fp = 0
         [a,b,c] = np.shape(fixed_dys)
         num_dx = b
         target_dys = tf.convert_to_tensor(fixed_dys)
-        target_dys = (tf.gather(target_dys,pred_class))
+        target_dys = target_dys[pred_class[0],:,:]
         norm_logits = output/tf.norm(output)
-
         for i in range(num_dx):
             logits_p = self.model.get_logits(x + fixed_dxs[i])
             logits_p_norm = logits_p/tf.norm(logits_p)
-            loss_fp = loss_fp + tf.losses.mean_squared_error((logits_p_norm-norm_logits), 
-                                                            target_dys[:,i,:])
+            d_logits = (logits_p_norm-norm_logits)[0,:]
+            loss_fp = loss_fp + tf.losses.mean_squared_error(d_logits, 
+                                                            target_dys[i,:])
             #self appropriate fingerprint
 
         def loss_fn(x, label):

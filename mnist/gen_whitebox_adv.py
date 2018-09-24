@@ -136,14 +136,16 @@ with tf.Session() as sess:
         pytorch_network = Net()
         pytorch_network.load_state_dict(torch.load(args_ckpt))
         pytorch_network.eval()
-        model = Model(torch_model=pytorch_network,softmax=True)
+        model = Model(torch_model=pytorch_network)
         keras_network = model.model
         transfer.pytorch_to_keras(pytorch_network, model.model)
         pytorch_network.eval()
         model = model.model
+        model_logits = model
         batch_size = 16
         craft_one_type(sess, model, new_X_test, new_Y_test, dataset, 'spsa',
-                           batch_size, fp_path=args.fingerprint_dir)
+                           batch_size, log_path=args.log_dir, 
+                           fp_path= args.fingerprint_dir)
 
     if(args.attack == 'cw-l2' or args.attack == 'all'):
         #No softmax for Carlini attack
@@ -155,9 +157,10 @@ with tf.Session() as sess:
         transfer.pytorch_to_keras(pytorch_network, model.model)
         pytorch_network.eval()
         model = model.model
-        batch_size = 16
+        batch_size = 2
         craft_one_type(sess, model, new_X_test, new_Y_test, dataset, 'cw-l2',
-                           batch_size, log_path=args.log_dir)
+                           batch_size, log_path=args.log_dir, 
+                           fp_path= args.fingerprint_dir  )
 
 
     if(args.attack == 'xent' or args.attack == 'cw_pgd'):

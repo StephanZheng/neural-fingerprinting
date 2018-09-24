@@ -49,7 +49,6 @@ def adaptive_fgsm(x, predictions, eps, clip_min=None, clip_max=None,
                      tf.reduce_max(predictions, 1, keep_dims=True)))
 
     output = logits
-    print(np.shape(logits))
     pred_class = tf.argmax(y,axis=1)
     loss_fp = 0
     [a,b,c] = np.shape(fixed_dys)
