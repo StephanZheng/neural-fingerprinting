@@ -75,6 +75,15 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
             log_dir = fp_path,
             model_logits = model_logits,
         )
+    elif attack == 'adapt-bim-b':
+        # BIM attack
+        print('Crafting %s adversarial samples...' % attack)
+        X_adv = adaptive_basic_iterative_method(
+            sess, model, X, Y, eps=ATTACK_PARAMS[dataset]['eps'],
+            eps_iter=ATTACK_PARAMS[dataset]['eps_iter'], clip_min=CLIP_MIN,
+            clip_max=CLIP_MAX, batch_size=batch_size,
+            log_dir = fp_path,
+            model_logits = model_logits )
     elif attack in ['bim-a', 'bim-b']:
         # BIM attack
         print('Crafting %s adversarial samples...' % attack)
@@ -183,6 +192,9 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
         if(dataset == 'mnist'):
             X_place = tf.placeholder(tf.float32, shape=[1, 1, 28, 28])
             pred = model(X_place)
+        else:
+            X_place = tf.placeholder(tf.float32, shape=[1, 3, 32, 32])
+            pred = model(X_place)
         print(m)
         for i in range(m):
             logits_op = sess.run(pred,feed_dict={X_place:X_adv[i:i+1,:,:,:],
@@ -204,7 +216,6 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
     f.close()
 
     print("Model accuracy on the test set: %0.2f%%" % (100.0 * acc))
-
     l2_diff = np.linalg.norm(
         X_adv.reshape((len(X), -1)) -
         X.reshape((len(X), -1)),
@@ -212,7 +223,10 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
     ).mean()
     print("Average L-2 perturbation size of the %s attack: %0.2f" %
           (attack, l2_diff))
-    return (X_adv,Y)
+    if("adapt" or "cw-fp" in args.attack):
+        return (X, X_adv,Y)
+    else:
+        return (X_adv,Y)
 
 def main(args):
     assert args.dataset in ['mnist', 'cifar', 'svhn'], \

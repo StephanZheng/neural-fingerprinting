@@ -26,14 +26,16 @@ import sys
 sys.path.insert(0, './cifar/')
 #Set path for attack code
 sys.path.insert(0, './mnist/')
-from src.util import (get_data, cross_entropy)
-from attacks import craft_one_type
+from third_party.lid_adversarial_subspace_detection.util import (get_data, cross_entropy)
+from third_party.attacks import craft_one_type
 # Global constants
 parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
 parser.add_argument('--attack', default="fgsm")
 parser.add_argument('--batch-size',type=int, default=128)
 parser.add_argument('--ckpt', default="/tmp/stephan/logs/cifar/ckpt/state_dict-ep_1.pth")
 parser.add_argument('--log-dir', type=str, default="/tmp/stephan/logs/cifar/adv_examples")
+parser.add_argument('--fingerprint-dir', type=str, default="/tmp/logs/neural_fingerprint/cifar/eps_0.1/numdx_5")
+
 args = parser.parse_args()
 
 with open('./cifar/config.json') as config_file:
@@ -108,7 +110,7 @@ with tf.Session() as sess:
     # Sample random test data
     _, _, X_test, Y_test = get_data(dataset)
     num_samples = np.shape(X_test)[0]
-    num_rand_samples = 320
+    num_rand_samples = 1328
     random_samples = np.random.randint(0,num_samples, num_rand_samples)
     new_X_test = X_test[random_samples,:,:,:]
     new_Y_test = Y_test[random_samples,:]
@@ -145,20 +147,55 @@ with tf.Session() as sess:
         craft_one_type(sess, model, new_X_test, new_Y_test, dataset, 'cw-l2',
                            batch_size, log_path=args.log_dir)
 
-    if(args.attack == 'cw-fp'):
+    if(args.attack in ['adapt-fgsm','adapt-all']):
+        # FGSM, BIM-a, JSMA
+        #
         pytorch_network = Net()
-        model = Model(torch_model=pytorch_network,softmax=False)
-        pytorch_network.load_state_dict(torch.load(args.ckpt, map_location=lambda storage, loc: storage))
-
+        pytorch_network.load_state_dict(torch.load(args_ckpt))
         pytorch_network.eval()
-        transfer.pytorch_to_keras( pytorch_network, model.model)
+        model_logits  = Model(torch_model=pytorch_network)
+        model  = Model(torch_model=pytorch_network)
+        keras_network = model.model
+        pytorch_network.eval()
+        transfer.pytorch_to_keras(pytorch_network, model.model)
+        transfer.pytorch_to_keras(pytorch_network, model_logits.model)
+        #util.test_tf2torch( model.model, pytorch_network,(1, 28, 28), num_rand_inp=10, precision=10**-2)
+        # Add tests to ensure model is transferred well
+        model = model.model
+        model_logits = model.model
+        if(args.attack == 'adapt-all'):
+            for attack in ['adapt-fgsm',"adapt-bim-b"]:
+                (X_cropped, X_adv,Y_adv) = craft_one_type(sess, model, new_X_test, new_Y_test, dataset, attack,
+                               args.batch_size, log_path=args.log_dir, fp_path= args.fingerprint_dir,
+                                               model_logits = model_logits)
+        else:
+
+            (X_cropped, X_adv,Y_adv) = craft_one_type(sess, model, new_X_test, new_Y_test, dataset, args.attack,
+                               args.batch_size, log_path=args.log_dir, fp_path= args.fingerprint_dir,
+                                           model_logits = model_logits)
+        f = open(os.path.join(args.log_dir,'Random_Test_%s_%s.p' % (dataset, args.attack)),'w')
+        print(os.path.join(args.log_dir,'Random_Test_%s_%s.p' % (dataset, args.attack)))
+        pickle.dump({"adv_input":X_cropped,"adv_labels":Y_adv},f)
+        f.close()
+
+    if(args.attack == 'cw-fp' or args.attack == 'all'):
         #No softmax for Carlini attack
+        pytorch_network = Net()
+        pytorch_network.load_state_dict(torch.load(args_ckpt))
+        pytorch_network.eval()
+        model = Model(torch_model=pytorch_network,softmax=False)
+        keras_network = model.model
+        transfer.pytorch_to_keras(pytorch_network, model.model)
+        pytorch_network.eval()
         model = model.model
         batch_size = 16
-        _, acc = model.evaluate(new_X_test, new_Y_test, batch_size=16,
-                                verbose=0)
-        craft_one_type(sess, model, new_X_test, new_Y_test, dataset, 'cw-fp',
-                           batch_size, log_path=args.log_dir)
+        (X_cropped, X_adv,Y_adv) = craft_one_type(sess, model, new_X_test, new_Y_test, dataset, 'cw-fp',
+                           batch_size, log_path=args.log_dir, fp_path= args.fingerprint_dir)
+
+        f = open(os.path.join(args.log_dir,'Random_Test_%s_.p' % (dataset, args.attack)),'w')
+        print(os.path.join(args.log_dir,'Random_Test_%s_.p' % (dataset, args.attack)))
+        pickle.dump({"adv_input":X_cropped,"adv_labels":Y_adv},f)
+        f.close()
 
 
     if(args.attack == 'xent' or args.attack == 'cw_pgd'):

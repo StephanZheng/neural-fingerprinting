@@ -92,4 +92,4 @@ class Adv(data.Dataset):
 
     def __len__(self):
 
-        return 1328
+        return 14

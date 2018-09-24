@@ -110,11 +110,9 @@ def evaluate_checkpoint(sess,model):
     f.close()
 
 
-with tf.Session() as sess:
-
+if(1>0):
     dataset = 'mnist'
-    K.set_session(sess)
-    K.set_image_data_format('channels_first')
+
 
     _, _, X_test, Y_test = get_data(dataset)
     num_samples = np.shape(X_test)[0]
@@ -132,6 +130,10 @@ with tf.Session() as sess:
     pickle.dump({"adv_input":new_X_test,"adv_labels":new_Y_test},f)
     f.close()
 
+with tf.Session() as sess:
+
+    K.set_session(sess)
+    K.set_image_data_format('channels_first')
     if(args.attack == 'spsa' or args.attack == 'all'):        
         pytorch_network = Net()
         pytorch_network.load_state_dict(torch.load(args_ckpt))
@@ -188,7 +190,7 @@ with tf.Session() as sess:
                                  config['log_dir'])
         evaluate_checkpoint(sess,model)
 
-    if(args.attack in ['adapt-fgsm','adapt-bim-a','adapt-all']):
+    if(args.attack in ['adapt-fgsm','adapt-all']):
         # FGSM, BIM-a, JSMA
         #
         pytorch_network = Net()
@@ -205,15 +207,19 @@ with tf.Session() as sess:
         model = model.model
         model_logits = model.model
         if(args.attack == 'adapt-all'):
-            for attack in ['adapt-fgsm','adapt-bim-a']:
-                (X_adv,Y_adv) = craft_one_type(sess, model, new_X_test, new_Y_test, dataset, attack,
+            for attack in ['adapt-fgsm',"adapt-bim-b"]:
+                (X_cropped, X_adv,Y_adv) = craft_one_type(sess, model, new_X_test, new_Y_test, dataset, attack,
                                args.batch_size, log_path=args.log_dir, fp_path= args.fingerprint_dir,
                                                model_logits = model_logits)
         else:
 
-            (X_adv,Y_adv) = craft_one_type(sess, model, new_X_test, new_Y_test, dataset, args.attack,
+            (X_cropped, X_adv,Y_adv) = craft_one_type(sess, model, new_X_test, new_Y_test, dataset, args.attack,
                                args.batch_size, log_path=args.log_dir, fp_path= args.fingerprint_dir,
                                            model_logits = model_logits)
+        f = open(os.path.join(args.log_dir,'Random_Test_%s_.p' % (dataset)),'w')
+        print(os.path.join(args.log_dir,'Random_Test_%s_.p' % (dataset)))
+        pickle.dump({"adv_input":X_cropped,"adv_labels":Y_adv},f)
+        f.close()
 
     if(args.attack == 'cw-fp' or args.attack == 'all'):
         #No softmax for Carlini attack
@@ -226,10 +232,13 @@ with tf.Session() as sess:
         pytorch_network.eval()
         model = model.model
         batch_size = 16
-        craft_one_type(sess, model, new_X_test, new_Y_test, dataset, 'cw-fp',
+        (X_cropped, X_adv,Y_adv) = craft_one_type(sess, model, new_X_test, new_Y_test, dataset, 'cw-fp',
                            batch_size, log_path=args.log_dir, fp_path= args.fingerprint_dir)
 
-
+        f = open(os.path.join(args.log_dir,'Random_Test_%s_.p' % (dataset)),'w')
+        print(os.path.join(args.log_dir,'Random_Test_%s_.p' % (dataset)))
+        pickle.dump({"adv_input":X_cropped,"adv_labels":Y_adv},f)
+        f.close()
     if(args.attack in ['fgsm','bim-a','bim-b','jsma','all']):
         # FGSM, BIM-a, JSMA
         #
@@ -254,3 +263,82 @@ with tf.Session() as sess:
 
 
     sess.close()
+"""
+if(args.attack in ['adapt-bim-b','adapt-all']):
+    num_splits = 5
+    net_Y = None
+    net_X = None
+    net_X_adv = None
+    for i in range(num_splits):
+        K.clear_session()
+        with tf.Session() as sess:
+
+            dataset = 'mnist'
+            K.set_session(sess)
+            K.set_image_data_format('channels_first')
+
+            _, _, X_test, Y_test = get_data(dataset)
+            num_samples = np.shape(X_test)[0]
+            num_rand_samples = 16
+            random_samples = np.random.randint(0,num_samples, num_rand_samples)
+            new_X_test = np.zeros((num_rand_samples, 1, 28, 28))
+            for i,sample_no in enumerate(random_samples):
+                    new_X_test[i,0,:,:] = (X_test[sample_no,:,:,0])
+            new_Y_test = Y_test[random_samples,:]
+
+            print("attack:", args.attack)
+
+            f = open(os.path.join(args.log_dir,'Random_Test_%s_.p' % (dataset)),'w')
+            print(os.path.join(args.log_dir,'Random_Test_%s_.p' % (dataset)))
+            pickle.dump({"adv_input":new_X_test,"adv_labels":new_Y_test},f)
+            f.close()
+
+            # FGSM, BIM-a, JSMA
+            #
+            pytorch_network = Net()
+            pytorch_network.load_state_dict(torch.load(args_ckpt))
+            pytorch_network.eval()
+            model_logits  = Model(torch_model=pytorch_network)
+            model  = Model(torch_model=pytorch_network)
+            keras_network = model.model
+            pytorch_network.eval()
+            transfer.pytorch_to_keras(pytorch_network, model.model)
+            transfer.pytorch_to_keras(pytorch_network, model_logits.model)
+            #util.test_tf2torch( model.model, pytorch_network,(1, 28, 28), num_rand_inp=10, precision=10**-2)
+            # Add tests to ensure model is transferred well
+            model = model.model
+            model_logits = model.model
+            split_start = i*(1.0/num_splits)*num_rand_samples
+            split_end = (i+1)*(1.0/num_splits)*num_rand_samples
+            if(i<num_splits-1):
+                (X_cropped, X_adv,Y_adv) = craft_one_type(sess, model, new_X_test[split_start:split_end,:,:,:],
+                                               new_Y_test[split_start:split_end,:],
+                                               dataset, 'adapt-bim-b',
+                                   args.batch_size, log_path=args.log_dir, fp_path= args.fingerprint_dir,
+                                                   model_logits = model_logits)
+            else:
+                (X_cropped, X_adv,Y_adv) = craft_one_type(sess, model, new_X_test[split_start:,:,:,:],
+                                               new_Y_test[split_start:,:],
+                                               dataset, 'adapt-bim-b',
+                                   args.batch_size, log_path=args.log_dir, fp_path= args.fingerprint_dir,
+                                                   model_logits = model_logits)
+            if(i==0):
+                net_Y = Y_adv
+                net_X_adv = X_adv
+                net_X = X_cropped
+            else:
+                net_Y = np.concatenate((net_Y, Y_adv),axis=0)
+                net_X_adv = np.concatenate((net_X_adv, X_adv),axis=0)
+                net_X = np.concatenate((net_X, X_cropped),axis=0)
+
+        f = open(os.path.join(args.log_dir,'Adv_%s_%s.p' % (dataset, attack)),'w')
+
+        pickle.dump({"adv_input":net_X_adv,"adv_labels":net_Y},f)
+        f.close()
+
+        f = open(os.path.join(args.log_dir,'Random_Test_%s_.p' % (dataset)),'w')
+        print(os.path.join(args.log_dir,'Random_Test_%s_.p' % (dataset)))
+        pickle.dump({"adv_input":X_cropped,"adv_labels":net_Y},f)
+        f.close()
+    sess.close()
+"""
