@@ -116,7 +116,7 @@ if(1>0):
 
     _, _, X_test, Y_test = get_data(dataset)
     num_samples = np.shape(X_test)[0]
-    num_rand_samples = 16
+    num_rand_samples = 8
     random_samples = np.random.randint(0,num_samples, num_rand_samples)
     new_X_test = np.zeros((num_rand_samples, 1, 28, 28))
     for i,sample_no in enumerate(random_samples):

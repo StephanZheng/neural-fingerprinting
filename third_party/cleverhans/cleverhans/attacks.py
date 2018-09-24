@@ -1758,6 +1758,7 @@ class SPSA(Attack):
 
     def generate(self,
                  x,
+                 alpha,
                  fp_path=None,
                  y=None,
                  y_target=None,
@@ -1850,9 +1851,9 @@ class SPSA(Attack):
             loss_multiplier = 1 if is_targeted else -1
             class_loss = loss_multiplier * margin_logit_loss(
                 logits, label, num_classes=self.model.nb_classes)
-            alpha = 0.1
-            print "what is this", class_loss, loss_fp
-            return class_loss - alpha * loss_fp
+            print "what is this isn't", class_loss, loss_fp
+
+            return class_loss + alpha * loss_fp
 
         y_attack = y_target if is_targeted else y
         adv_x = pgd_attack(

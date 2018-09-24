@@ -31,7 +31,8 @@ class Model(object):
                          activation='relu',
                          input_shape=(1, 28, 28),
                          name='conv1'))
-        model.add(BatchNormalization(axis=1,name='bnm1',momentum=0.1))
+        l1 = BatchNormalization(axis=1,name='bnm1',momentum=0.1)
+        model.add(l1)
         model.add(Conv2D(32, (3, 3),activation='relu',name='conv2'))
         model.add(BatchNormalization(axis=1,name='bnm2',momentum=0.1))
         model.add(MaxPooling2D(pool_size=(2, 2)))

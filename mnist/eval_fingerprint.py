@@ -88,7 +88,7 @@ random_loader = torch.utils.data.DataLoader(
     custom_datasets.RandomMNIST(transform=transform),
     batch_size=args.batch_size, shuffle=False, **kwargs)
 
-list_advs = ["cw-fp"] #, "bim-a", "bim-b", "jsma", "cw-l2"]
+list_advs = ["spsa"] #, "bim-a", "bim-b", "jsma", "cw-l2"]
 # List of attacks, copy from run_search
 
 dataset = 'mnist'

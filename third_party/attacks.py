@@ -8,8 +8,12 @@ import warnings
 import numpy as np
 import tensorflow as tf
 import keras.backend as K
+from keras.models import Sequential
+from keras.layers import Dense, Dropout, Flatten
+from keras.layers import Conv2D, MaxPooling2D, BatchNormalization
 K.set_image_data_format('channels_first')
 from keras.models import load_model
+import tensorflow.contrib.layers as layers
 import dill as pickle
 from third_party.lid_adversarial_subspace_detection.util import (get_data, get_model, cross_entropy) # , get_noisy_samples)
 from third_party.lid_adversarial_subspace_detection.attacks \
@@ -126,6 +130,46 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
         X_adv = cw_attack.attack(X, Y)
 
     elif attack == 'spsa':
+        binary_steps = 1
+        batch_shape = X.shape
+        X_input = tf.placeholder(tf.float32, shape=(1,) + batch_shape[1:])
+        Y_label = tf.placeholder(tf.int32, shape=(1,))
+        alpha = tf.placeholder(tf.float32, shape= (1,))
+
+        num_samples = np.shape(X)[0]
+        # X = (X - np.argmin(X))/(np.argmax(X)-np.argmin(X))
+        _min = np.min(X)
+        _max = np.max(X)
+        print(_max, _min)
+        print(tf.trainable_variables())
+        filters = sess.run('conv1/kernel:0')
+        biases = 0.0*sess.run('conv1/bias:0')
+        shift_model = Sequential()
+        shift_model.add(Conv2D(32, kernel_size=(3, 3),
+                         activation=None,
+                         input_shape=(1, 28, 28)))
+        X_input_2 = tf.placeholder(tf.float32, shape=(None,) + batch_shape[1:])
+
+        correction_term = shift_model(X_input_2)
+        X_correction = -0.5*np.ones((1,1,28,28)) # We will shift the image up by 0.5, so this is the correction
+        # for PGD
+
+
+        shift_model.layers[0].set_weights([filters,biases])
+        bias_correction_terms =(sess.run(correction_term, feed_dict={X_input_2:X_correction}))
+        for i in range(32):
+            biases[i] = bias_correction_terms[0,i,0,0]
+        _, acc = model.evaluate(X, Y, batch_size=batch_size, verbose=0)
+        print("Model accuracy on the test set: %0.2f%%" % (100.0 * acc))
+        original_biases = model.layers[0].get_weights()[1]
+        original_weights = model.layers[0].get_weights()[0]
+        model.layers[0].set_weights([original_weights,original_biases+biases])
+        #Correct model for input shift
+
+        X = X + 0.5 #shift input to make it >=0
+        _, acc = model.evaluate(X, Y, batch_size=batch_size, verbose=0)
+        print("Model accuracy on the test set: %0.2f%%" % (100.0 * acc))
+        # check accuracy post correction of input and model
         print('Crafting %s examples. Using Cleverhans' % attack)
         image_size = ATTACK_PARAMS[dataset]['image_size']
         num_channels = ATTACK_PARAMS[dataset]['num_channels']
@@ -134,57 +178,84 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
         from cleverhans.utils_keras import KerasModelWrapper
         wrapped_model = KerasModelWrapper(model)
 
-        if dataset == "mnist": 
-            wrapped_model.nb_classes = 10 
-        elif dataset == "cifar": 
-            wrapped_model.nb_classes = 10 
+        if dataset == "mnist":
+            wrapped_model.nb_classes = 10
+        elif dataset == "cifar":
+            wrapped_model.nb_classes = 10
         else:
-            wrapped_model.nb_classes = 10 
+            wrapped_model.nb_classes = 10
 
         real_batch_size = X.shape[0]
+        X_adv = None
 
         spsa = SPSA(wrapped_model, back='tf', sess=sess)
         spsa_params = {
-            "epsilon": 4. / 255,
-            'num_steps': 1,
+            "epsilon": ATTACK_PARAMS[dataset]['eps'],
+            'num_steps': 100,
             'spsa_iters': 1,
-            'early_stop_loss_threshold': -1.,
+            'early_stop_loss_threshold': None,
             'is_targeted': False,
-            'is_debug': True,
+            'is_debug': False,
             'spsa_samples': real_batch_size,
-        }   
-        batch_shape = X.shape
-	X_input = tf.placeholder(tf.float32, shape=(1,) + batch_shape[1:])
-        Y_label = tf.placeholder(tf.int32, shape=(1,))
+        }
+        X_adv_spsa = spsa.generate(X_input, alpha=alpha, y=Y_label, fp_path=fp_path, **spsa_params)
 
-        X_adv_spsa = spsa.generate(X_input, y=Y_label, fp_path=fp_path, **spsa_params)
-    
-        # X = (X - np.argmin(X))/(np.argmax(X)-np.argmin(X))
-        X_adv = []
-        for i in range(real_batch_size):        
+        for i in range(num_samples):
         
             # rescale to format TF wants
-            _min = np.min(X[i])
-            _max = np.max(X[i])
-            X_i_norm = (X[i] - _min)/(_max-_min)
-       
-            # Run attack
-            res = sess.run(X_adv_spsa, feed_dict={X_input: np.expand_dims(X_i_norm, axis=0), Y_label: np.array([np.argmax(Y[i])])})
-        
-            # Rescale result back to our scale
-            X_adv += [(res + _min) * (_max-_min)]
-            
-        X_adv = np.concatenate(X_adv, axis=0)
-        # X_adv = spsa.generate_np(X, **spsa_params) 
 
-    print(X.shape, X_adv.shape, Y.shape)
+            #X_i_norm = (X[i] - _min)/(_max-_min)
+
+            X_i_norm = X[i]
+            # Run attack
+            best_res = None
+            ALPHA = np.ones(1)*0.1
+            lb = 1.0e-2
+            ub = 1.0e2
+            for j in range(binary_steps):
+                res = sess.run(X_adv_spsa,
+                feed_dict={X_input: np.expand_dims(X_i_norm, axis=0), Y_label: np.array([np.argmax(Y[i])]),
+                            K.learning_phase(): 0, alpha: ALPHA})
+                X_place = tf.placeholder(tf.float32, shape=[1, 1, 28, 28])
+                pred = model(X_place)
+                model_op = sess.run(pred,feed_dict={X_place:res,
+                                               K.learning_phase(): 0})
+
+                if(not np.argmax(model_op) == np.argmax(Y[i,:])):
+                    lb = ALPHA[0]
+                else:
+                    ub = ALPHA[0]
+                ALPHA[0] = 0.5*(lb+ub)
+                print(ALPHA)
+                if(best_res is None):
+                    best_res = res
+                else:
+                    if(not np.argmax(model_op) == np.argmax(Y[i,:])):
+                        best_res = res
+                        pass
+
+            # Rescale result back to our scale
+
+            if(i==0):
+                X_adv = best_res
+            else:
+                X_adv = np.concatenate((X_adv,best_res), axis=0)
+
+
+
+
 
     _, acc = model.evaluate(X_adv, Y, batch_size=batch_size, verbose=0)
     print("Model accuracy on the adversarial test set: %0.2f%%" % (100.0 * acc))
     _, acc = model.evaluate(X, Y, batch_size=batch_size, verbose=0)
     print("Model accuracy on the test set: %0.2f%%" % (100.0 * acc))
 
-    if("adapt" in attack or "fp" in attack):
+    #Revert model to original
+    model.layers[0].set_weights([original_weights,original_biases])
+    #Revert adv shift
+    X_adv = X_adv - 0.5
+
+    if("adapt" in attack or "fp" in attack or "spsa" in attack):
         [m,_,_,_]=(np.shape(X_adv))
         cropped_X_adv = []
         cropped_Y = []
@@ -195,7 +266,6 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
         else:
             X_place = tf.placeholder(tf.float32, shape=[1, 3, 32, 32])
             pred = model(X_place)
-        print(m)
         for i in range(m):
             logits_op = sess.run(pred,feed_dict={X_place:X_adv[i:i+1,:,:,:],
                                            K.learning_phase(): 0})
@@ -207,7 +277,10 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
         X = np.array(cropped_X)
         Y = np.array(cropped_Y)
 
-    print(len(X_adv))
+        f = open(os.path.join(log_path,'Random_Test_%s_%s.p' % (dataset, attack)),'w')
+
+        pickle.dump({"adv_input":X,"adv_labels":Y},f)
+        f.close()
 
     #np.save(os.path.join(PATH_DATA, 'Adv_%s_%s.npy' % (dataset, attack)), X_adv)
     f = open(os.path.join(log_path,'Adv_%s_%s.p' % (dataset, attack)),'w')
