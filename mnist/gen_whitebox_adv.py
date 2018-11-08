@@ -149,6 +149,23 @@ with tf.Session() as sess:
                            batch_size, log_path=args.log_dir, 
                            fp_path= args.fingerprint_dir)
 
+    if(args.attack == 'adapt-pgd' or args.attack == 'all'):
+        print("entered")
+        pytorch_network = Net()
+        pytorch_network.load_state_dict(torch.load(args_ckpt))
+        pytorch_network.eval()
+        model = Model(torch_model=pytorch_network)
+        keras_network = model.model
+        transfer.pytorch_to_keras(pytorch_network, model.model)
+        pytorch_network.eval()
+        model = model.model
+        model_logits = model
+        batch_size = 16
+        craft_one_type(sess, model, new_X_test, new_Y_test, dataset, 'adapt-pgd',
+                           batch_size, log_path=args.log_dir,
+                           fp_path= args.fingerprint_dir)
+
+
     if(args.attack == 'cw-l2' or args.attack == 'all'):
         #No softmax for Carlini attack
         pytorch_network = Net()
@@ -235,8 +252,8 @@ with tf.Session() as sess:
         (X_cropped, X_adv,Y_adv) = craft_one_type(sess, model, new_X_test, new_Y_test, dataset, 'cw-fp',
                            batch_size, log_path=args.log_dir, fp_path= args.fingerprint_dir)
 
-        f = open(os.path.join(args.log_dir,'Random_Test_%s_.p' % (dataset)),'w')
-        print(os.path.join(args.log_dir,'Random_Test_%s_.p' % (dataset)))
+        f = open(os.path.join(args.log_dir,'Random_Test_%s_%s.p' % (dataset)),'w')
+        print(os.path.join(args.log_dir,'Random_Test_%s_%s.p' % (dataset)))
         pickle.dump({"adv_input":X_cropped,"adv_labels":Y_adv},f)
         f.close()
     if(args.attack in ['fgsm','bim-a','bim-b','jsma','all']):
