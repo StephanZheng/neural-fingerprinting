@@ -22,7 +22,8 @@ import errno
 import torch
 import codecs
 import random
-
+import sys
+sys.path.append('..')
 import util
 
 class RandomMNIST(data.Dataset):
