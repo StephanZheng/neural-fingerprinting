@@ -213,7 +213,7 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
         X_adv_spsa = spsa.generate(X_input, alpha=alpha, y=Y_label, fp_path=fp_path, **spsa_params)
 
         for i in range(num_samples):
-        
+
             # rescale to format TF wants
 
             #X_i_norm = (X[i] - _min)/(_max-_min)
@@ -260,16 +260,16 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
 
 
 
-            _, acc = model.evaluate(X_adv, Y, batch_size=batch_size, verbose=0)
-            print("Model accuracy on the adversarial test set: %0.2f%%" % (100.0 * acc))
-            _, acc = model.evaluate(X, Y, batch_size=batch_size, verbose=0)
-            print("Model accuracy on the test set: %0.2f%%" % (100.0 * acc))
+        _, acc = model.evaluate(X_adv, Y, batch_size=batch_size, verbose=0)
+        print("Model accuracy on the adversarial test set: %0.2f%%" % (100.0 * acc))
+        _, acc = model.evaluate(X, Y, batch_size=batch_size, verbose=0)
+        print("Model accuracy on the test set: %0.2f%%" % (100.0 * acc))
 
 
-            #Revert model to original
-            model.layers[0].set_weights([original_weights,original_biases])
-            #Revert adv shift
-            X_adv = X_adv - 0.5
+        #Revert model to original
+        model.layers[0].set_weights([original_weights,original_biases])
+        #Revert adv shift
+        X_adv = X_adv - 0.5
 
     elif attack=='adapt-pgd':
         print("here")
@@ -419,16 +419,16 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
 
 
 
-            _, acc = model.evaluate(X_adv, Y, batch_size=batch_size, verbose=0)
-            print("Model accuracy on the adversarial test set: %0.2f%%" % (100.0 * acc))
-            _, acc = model.evaluate(X, Y, batch_size=batch_size, verbose=0)
-            print("Model accuracy on the test set: %0.2f%%" % (100.0 * acc))
+        _, acc = model.evaluate(X_adv, Y, batch_size=batch_size, verbose=0)
+        print("Model accuracy on the adversarial test set: %0.2f%%" % (100.0 * acc))
+        _, acc = model.evaluate(X, Y, batch_size=batch_size, verbose=0)
+        print("Model accuracy on the test set: %0.2f%%" % (100.0 * acc))
 
 
-            #Revert model to original
-            model.layers[0].set_weights([original_weights,original_biases])
-            #Revert adv shift
-            X_adv = X_adv - 0.5
+        #Revert model to original
+        model.layers[0].set_weights([original_weights,original_biases])
+        #Revert adv shift
+        X_adv = X_adv - 0.5
         pass
 
     if("adapt" in attack or "fp" in attack or "spsa" in attack):
@@ -564,4 +564,3 @@ if __name__ == "__main__":
     # # svhn
     # args = parser.parse_args(['-d', 'svhn', '-a', 'cw-lid', '-b', '16'])
     # main(args)
-
