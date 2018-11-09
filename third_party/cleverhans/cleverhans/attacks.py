@@ -1450,9 +1450,9 @@ class MadryEtAl(Attack):
         self.targeted = self.y_target is not None
 
         # Initialize loop variables
-        adv_x = self.attack(x, labels)
+        adv_x, adv_loss_fp = self.attack(x, labels)
 
-        return adv_x
+        return adv_x, adv_loss_fp
 
     def parse_params(self,
                      eps=0.3,
@@ -1464,6 +1464,7 @@ class MadryEtAl(Attack):
                      clip_max=None,
                      y_target=None,
                      rand_init=True,
+                     fp_path=None,
                      **kwargs):
         """
         Take in a dictionary of parameters and applies attack-specific checks
@@ -1497,7 +1498,14 @@ class MadryEtAl(Attack):
         self.clip_min = clip_min
         self.clip_max = clip_max
         self.rand_init = rand_init
+        self.fp_path = fp_path
 
+        import cPickle as pickle
+        import os
+
+        fingerprint_dir = self.fp_path
+        self.fixed_dxs = pickle.load(open(os.path.join(fingerprint_dir, "fp_inputs_dx.pkl"), "rb"))
+        self.fixed_dys = pickle.load(open(os.path.join(fingerprint_dir, "fp_outputs.pkl"), "rb"))
         if self.y is not None and self.y_target is not None:
             raise ValueError("Must not set both y and y_target")
         # Check if order of the norm is acceptable given current implementation
@@ -1524,6 +1532,54 @@ class MadryEtAl(Attack):
         loss = attack_softmax_cross_entropy(y, logits)
         if self.targeted:
             loss = -loss
+
+
+
+
+
+        fixed_dys = self.fixed_dys
+        fixed_dxs = self.fixed_dxs
+        output = logits
+        """
+        #y = tf.Print(y, [y])
+        pred_class = tf.argmax(y,axis=1)
+        loss_fp = 0
+        [a,b,c] = np.shape(fixed_dys)
+        num_dx = b
+        target_dys = tf.convert_to_tensor(fixed_dys)
+        target_dys = (tf.gather(target_dys,pred_class))
+
+        norm_logits = output/tf.norm(output)
+        for i in range(num_dx):
+            logits_p = self.model.get_logits(adv_x + fixed_dxs[i])
+            logits_p_norm = logits_p/tf.norm(logits_p)
+            loss_fp = loss_fp + tf.losses.mean_squared_error(logits_p_norm,
+                                                            target_dys[:,i,:])
+        min_loss_fp = loss_fp
+        """
+        ### Alt version
+        loss_fp_list = []
+        for i in range(10):
+            pred_class = [i]
+
+            fixed_dys = self.fixed_dys
+            fixed_dxs = self.fixed_dxs
+            loss_fp = 0
+            [a,b,c] = np.shape(fixed_dys)
+            num_dx = b
+            target_dys = tf.convert_to_tensor(fixed_dys)
+            target_dys = (tf.gather(target_dys,pred_class))
+            norm_logits = output/tf.norm(output)
+            for i in range(num_dx):
+                logits_p = self.model.get_logits(adv_x + fixed_dxs[i])
+                logits_p_norm = logits_p/tf.norm(logits_p)
+                loss_fp = loss_fp + tf.losses.mean_squared_error(logits_p_norm,
+                                                                target_dys[:,i,:])
+            loss_fp_list.append(loss_fp)
+        min_loss_fp = tf.reduce_min(loss_fp_list)
+
+
+        loss = loss - 1.0*min_loss_fp
         grad, = tf.gradients(loss, adv_x)
         scaled_signed_grad = self.eps_iter * tf.sign(grad)
         adv_x = adv_x + scaled_signed_grad
@@ -1531,7 +1587,7 @@ class MadryEtAl(Attack):
             adv_x = tf.clip_by_value(adv_x, self.clip_min, self.clip_max)
         eta = adv_x - x
         eta = clip_eta(eta, self.ord, self.eps)
-        return eta
+        return eta, min_loss_fp
 
     def attack(self, x, y):
         """
@@ -1550,23 +1606,28 @@ class MadryEtAl(Attack):
             eta = tf.random_uniform(
                 tf.shape(x), -self.eps, self.eps, dtype=self.tf_dtype)
             eta = clip_eta(eta, self.ord, self.eps)
+            temp_logits = self.model.get_logits(x)
+            from cleverhans.loss import attack_softmax_cross_entropy
+
+            temp_loss = attack_softmax_cross_entropy(y, temp_logits)
+            adv_loss_fp = temp_loss
         else:
             eta = tf.zeros_like(x)
 
-        def cond(i, _):
+        def cond(i, _, alf):
             return tf.less(i, self.nb_iter)
 
-        def body(i, e):
-            new_eta = self.attack_single_step(x, e, y)
-            return i + 1, new_eta
+        def body(i, e, alf):
+            new_eta, adv_loss_fp = self.attack_single_step(x, e, y)
+            return i + 1, new_eta, adv_loss_fp
 
-        _, eta = tf.while_loop(cond, body, [tf.zeros([]), eta], back_prop=True)
+        _, eta, adv_loss_fp = tf.while_loop(cond, body, [tf.zeros([]), eta, adv_loss_fp], back_prop=True)
 
         adv_x = x + eta
         if self.clip_min is not None and self.clip_max is not None:
             adv_x = tf.clip_by_value(adv_x, self.clip_min, self.clip_max)
 
-        return adv_x
+        return adv_x, adv_loss_fp
 
 
 class FastFeatureAdversaries(Attack):
@@ -1831,7 +1892,7 @@ class SPSA(Attack):
 
         output = logits
         y = tf.Print(y, [y])
-        pred_class = y      
+        pred_class = y
         loss_fp = 0
         [a,b,c] = np.shape(fixed_dys)
         num_dx = b
@@ -1842,7 +1903,7 @@ class SPSA(Attack):
             logits_p = self.model.get_logits(x + fixed_dxs[i])
             logits_p_norm = logits_p/tf.norm(logits_p)
             d_logits = (logits_p_norm-norm_logits)[0,:]
-            loss_fp = loss_fp + tf.losses.mean_squared_error(d_logits, 
+            loss_fp = loss_fp + tf.losses.mean_squared_error(d_logits,
                                                             target_dys[i,:])
             #self appropriate fingerprint
 

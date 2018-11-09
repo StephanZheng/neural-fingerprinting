@@ -116,7 +116,7 @@ if(1>0):
 
     _, _, X_test, Y_test = get_data(dataset)
     num_samples = np.shape(X_test)[0]
-    num_rand_samples = 8
+    num_rand_samples = 32
     random_samples = np.random.randint(0,num_samples, num_rand_samples)
     new_X_test = np.zeros((num_rand_samples, 1, 28, 28))
     for i,sample_no in enumerate(random_samples):
@@ -134,7 +134,7 @@ with tf.Session() as sess:
 
     K.set_session(sess)
     K.set_image_data_format('channels_first')
-    if(args.attack == 'spsa' or args.attack == 'all'):        
+    if(args.attack == 'spsa' or args.attack == 'all'):
         pytorch_network = Net()
         pytorch_network.load_state_dict(torch.load(args_ckpt))
         pytorch_network.eval()
@@ -146,7 +146,7 @@ with tf.Session() as sess:
         model_logits = model
         batch_size = 16
         craft_one_type(sess, model, new_X_test, new_Y_test, dataset, 'spsa',
-                           batch_size, log_path=args.log_dir, 
+                           batch_size, log_path=args.log_dir,
                            fp_path= args.fingerprint_dir)
 
     if(args.attack == 'adapt-pgd' or args.attack == 'all'):
@@ -178,7 +178,7 @@ with tf.Session() as sess:
         model = model.model
         batch_size = 2
         craft_one_type(sess, model, new_X_test, new_Y_test, dataset, 'cw-l2',
-                           batch_size, log_path=args.log_dir, 
+                           batch_size, log_path=args.log_dir,
                            fp_path= args.fingerprint_dir  )
 
 

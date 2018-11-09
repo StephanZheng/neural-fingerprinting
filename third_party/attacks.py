@@ -8,6 +8,7 @@ import warnings
 import numpy as np
 import tensorflow as tf
 import keras.backend as K
+import keras
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Flatten
 from keras.layers import Conv2D, MaxPooling2D, BatchNormalization
@@ -29,6 +30,7 @@ from third_party.lid_adversarial_subspace_detection.adaptive_attacks \
 from third_party.lid_adversarial_subspace_detection.cw_attacks import CarliniL2, CarliniFP, CarliniFP_2vars
 from cleverhans.attacks import SPSA
 from cleverhans.attacks import MadryEtAl
+keras.layers.core.K.set_learning_phase(0)
 
 # FGSM & BIM attack parameters that were chosen
 ATTACK_PARAMS = {
@@ -272,8 +274,8 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
         X_adv = X_adv - 0.5
 
     elif attack=='adapt-pgd':
-        print("here")
         binary_steps = 1
+        rand_starts = 1
         batch_shape = X.shape
         X_input = tf.placeholder(tf.float32, shape=(1,) + batch_shape[1:])
         Y_label = tf.placeholder(tf.int32, shape=(1,))
@@ -300,15 +302,11 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
         X_input_2 = tf.placeholder(tf.float32, shape=(None,) + batch_shape[1:])
 
         correction_term = shift_model(X_input_2)
-        if(dataset=='mnist'):
-            X_correction = -0.5*np.ones((1,1,28,28))
+        if(dataset == 'mnist'):
+            X_correction = -0.5*np.ones((1,1,28,28)) # We will shift the image up by 0.5, so this is the correction
         else:
-            X_correction = -0.5*np.ones((1,3,32,32))
+            X_correction = -0.5*np.ones((1,3,32,32)) # We will shift the image up by 0.5, so this is the correction
 
-
-        # Change this to 32 if running on CIFAR
-
-        # We will shift the image up by 0.5, so this is the correction
         # for PGD
 
 
@@ -346,33 +344,11 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
         X_adv = None
 
         pgd = MadryEtAl(wrapped_model, back='tf', sess=sess)
-        X_adv_pgd = pgd.generate(X_input, eps=.5, eps_iter=0.05,
-                                      clip_min=0.5, clip_max=0.7,
-                        nb_iter=2, sanity_checks=False)
-        print(dataset)
-        self.feedable_kwargs = {
-            'eps': self.np_dtype,
-            'eps_iter': self.np_dtype,
-            'y': self.np_dtype,
-            'y_target': self.np_dtype,
-            'clip_min': self.np_dtype,
-            'clip_max': self.np_dtype
-        }
+        X_adv_pgd, adv_loss_fp = pgd.generate(X_input, eps=0.3, eps_iter=0.02,
+                                      clip_min=0.0, clip_max=1.0,
+                        nb_iter=200, rand_init=True, fp_path=fp_path)
 
-        spsa_params = {
-            "epsilon": ATTACK_PARAMS[dataset]['eps'],
-            'num_steps': 100,
-            'spsa_iters': 1,
-            'early_stop_loss_threshold': None,
-            'is_targeted': False,
-            'is_debug': False,
-            'spsa_samples': real_batch_size,
-        }
-        res = sess.run(X_adv_pgd,
-                feed_dict={X_input: np.expand_dims(X[0], axis=0), Y_label: np.array([np.argmax(Y[0])]),
-                            K.learning_phase(): 0})
-        print(res)
-        exit()
+
 
         for i in range(num_samples):
 
@@ -387,13 +363,16 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
             lb = 1.0e-2
             ub = 1.0e2
             for j in range(binary_steps):
-                res = sess.run(X_adv_spsa,
-                feed_dict={X_input: np.expand_dims(X_i_norm, axis=0), Y_label: np.array([np.argmax(Y[i])]),
-                            K.learning_phase(): 0, alpha: ALPHA})
-                X_place = tf.placeholder(tf.float32, shape=[1, 1, 28, 28])
+                [res,res_loss] = sess.run([X_adv_pgd, adv_loss_fp],
+                    feed_dict={X_input: np.expand_dims(X[i], axis=0),
+                    Y_label: np.array([np.argmax(Y[i])])})
+                if(dataset == 'mnist'):
+                    X_place = tf.placeholder(tf.float32, shape=[1, 1, 28, 28])
+                else:
+                    X_place = tf.placeholder(tf.float32, shape=[1, 3, 32, 32])
+
                 pred = model(X_place)
-                model_op = sess.run(pred,feed_dict={X_place:res,
-                                               K.learning_phase(): 0})
+                model_op = sess.run(pred,feed_dict={X_place:res})
 
                 if(not np.argmax(model_op) == np.argmax(Y[i,:])):
                     lb = ALPHA[0]
@@ -443,8 +422,7 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
             X_place = tf.placeholder(tf.float32, shape=[1, 3, 32, 32])
             pred = model(X_place)
         for i in range(m):
-            logits_op = sess.run(pred,feed_dict={X_place:X_adv[i:i+1,:,:,:],
-                                           K.learning_phase(): 0})
+            logits_op = sess.run(pred,feed_dict={X_place:X_adv[i:i+1,:,:,:]})
             if(not np.argmax(logits_op) == np.argmax(Y[i,:])):
                 cropped_Y.append(Y[i,:])
                 cropped_X_adv.append(X_adv[i,:,:,:])
