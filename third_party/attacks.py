@@ -275,7 +275,7 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
 
     elif attack=='adapt-pgd':
         binary_steps = 1
-        rand_starts = 1
+        rand_starts = 2
         batch_shape = X.shape
         X_input = tf.placeholder(tf.float32, shape=(1,) + batch_shape[1:])
         Y_label = tf.placeholder(tf.int32, shape=(1,))
@@ -346,12 +346,12 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
         pgd = MadryEtAl(wrapped_model, back='tf', sess=sess)
         X_adv_pgd, adv_loss_fp = pgd.generate(X_input, eps=0.3, eps_iter=0.02,
                                       clip_min=0.0, clip_max=1.0,
-                        nb_iter=200, rand_init=True, fp_path=fp_path)
+                        nb_iter=20, rand_init=True, fp_path=fp_path,
+                        alpha=alpha)
 
 
 
         for i in range(num_samples):
-
             # rescale to format TF wants
 
             #X_i_norm = (X[i] - _min)/(_max-_min)
@@ -359,34 +359,43 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
             X_i_norm = X[i]
             # Run attack
             best_res = None
+            best_res_loss = 1000000.0
             ALPHA = np.ones(1)*0.1
             lb = 1.0e-2
             ub = 1.0e2
             for j in range(binary_steps):
-                [res,res_loss] = sess.run([X_adv_pgd, adv_loss_fp],
-                    feed_dict={X_input: np.expand_dims(X[i], axis=0),
-                    Y_label: np.array([np.argmax(Y[i])])})
-                if(dataset == 'mnist'):
-                    X_place = tf.placeholder(tf.float32, shape=[1, 1, 28, 28])
-                else:
-                    X_place = tf.placeholder(tf.float32, shape=[1, 3, 32, 32])
+                bin_flag = 0
+                for jj in range(rand_starts):
 
-                pred = model(X_place)
-                model_op = sess.run(pred,feed_dict={X_place:res})
+                    [res,res_loss] = sess.run([X_adv_pgd, adv_loss_fp],
+                        feed_dict={X_input: np.expand_dims(X[i], axis=0),
+                        Y_label: np.array([np.argmax(Y[i])]),
+                         alpha: ALPHA})
 
-                if(not np.argmax(model_op) == np.argmax(Y[i,:])):
+                    if(dataset == 'mnist'):
+                        X_place = tf.placeholder(tf.float32, shape=[1, 1, 28, 28])
+                    else:
+                        X_place = tf.placeholder(tf.float32, shape=[1, 3, 32, 32])
+
+                    pred = model(X_place)
+                    model_op = sess.run(pred,feed_dict={X_place:res})
+
+
+                    if(best_res is None):
+                        best_res = res
+                    else:
+                        if((not np.argmax(model_op) == np.argmax(Y[i,:]))
+                        and res_loss < best_res_loss):
+                            best_res = res
+                            best_res_loss = res_loss
+                            bin_flag = 1
+                            pass
+                if(bin_flag == 1):
                     lb = ALPHA[0]
                 else:
                     ub = ALPHA[0]
                 ALPHA[0] = 0.5*(lb+ub)
                 print(ALPHA)
-                if(best_res is None):
-                    best_res = res
-                else:
-                    if(not np.argmax(model_op) == np.argmax(Y[i,:])):
-                        best_res = res
-                        pass
-
             # Rescale result back to our scale
 
             if(i==0):

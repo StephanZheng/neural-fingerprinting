@@ -1458,6 +1458,7 @@ class MadryEtAl(Attack):
                      eps=0.3,
                      eps_iter=0.01,
                      nb_iter=40,
+                     alpha=None,
                      y=None,
                      ord=np.inf,
                      clip_min=None,
@@ -1499,6 +1500,7 @@ class MadryEtAl(Attack):
         self.clip_max = clip_max
         self.rand_init = rand_init
         self.fp_path = fp_path
+        self.alpha = alpha
 
         import cPickle as pickle
         import os
@@ -1559,6 +1561,9 @@ class MadryEtAl(Attack):
         """
         ### Alt version
         loss_fp_list = []
+        alpha = self.alpha
+
+        #### Hard-coded for 10 classes -- MNIST, CIFAR-10 -- fix later
         for i in range(10):
             pred_class = [i]
 
@@ -1579,7 +1584,7 @@ class MadryEtAl(Attack):
         min_loss_fp = tf.reduce_min(loss_fp_list)
 
 
-        loss = loss - 1.0*min_loss_fp
+        loss = loss - alpha*min_loss_fp
         grad, = tf.gradients(loss, adv_x)
         scaled_signed_grad = self.eps_iter * tf.sign(grad)
         adv_x = adv_x + scaled_signed_grad

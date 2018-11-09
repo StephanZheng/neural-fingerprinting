@@ -116,7 +116,7 @@ if(1>0):
 
     _, _, X_test, Y_test = get_data(dataset)
     num_samples = np.shape(X_test)[0]
-    num_rand_samples = 32
+    num_rand_samples = 2
     random_samples = np.random.randint(0,num_samples, num_rand_samples)
     new_X_test = np.zeros((num_rand_samples, 1, 28, 28))
     for i,sample_no in enumerate(random_samples):
@@ -150,7 +150,6 @@ with tf.Session() as sess:
                            fp_path= args.fingerprint_dir)
 
     if(args.attack == 'adapt-pgd' or args.attack == 'all'):
-        print("entered")
         pytorch_network = Net()
         pytorch_network.load_state_dict(torch.load(args_ckpt))
         pytorch_network.eval()

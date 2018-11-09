@@ -134,7 +134,6 @@ with tf.Session() as sess:
                            fp_path= args.fingerprint_dir)
 
     if(args.attack == 'adapt-pgd' or args.attack == 'all'):
-        print("entered")
         pytorch_network = Net()
         pytorch_network.load_state_dict(torch.load(args_ckpt))
         pytorch_network.eval()
@@ -261,4 +260,3 @@ with tf.Session() as sess:
                                args.batch_size, log_path=args.log_dir)
 
     sess.close()
-
