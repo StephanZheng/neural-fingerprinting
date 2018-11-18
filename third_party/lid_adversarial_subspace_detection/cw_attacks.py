@@ -217,7 +217,7 @@ class CarliniL2:
                 # perform the attack
                 _, l, l2s, scores, nimg = self.sess.run([self.train, self.loss,
                                                          self.l2dist, self.output,
-                                                         self.newimg], feed_dict={K.learning_phase(): 0})
+                                                         self.newimg], feed_dict={})
 
                 # print out the losses every 10%
                 # if iteration % (self.MAX_ITERATIONS // 10) == 0:
@@ -353,7 +353,7 @@ class CarliniFP:
         target_dys = (tf.gather(target_dys,pred_class))
         logits_norm = tf.sqrt(tf.reduce_sum(tf.square(self.output), axis=1,
                             keep_dims=True))
-        norm_logits = self.output/tf.norm(self.output)
+        norm_logits = self.output/logits_norm
 
 
         for i in range(num_dx):
@@ -482,14 +482,14 @@ class CarliniFP:
                                        self.assign_const: CONST})
 
             # get clean logits of clean samples:
-            c_logits = self.sess.run([self.output], feed_dict={K.learning_phase(): 0})
+            c_logits = self.sess.run([self.output], feed_dict={})
 
             prev = 1e6
             for iteration in range(self.MAX_ITERATIONS):
                 # perform the attack
                 _, l, l2s, scores, nimg = self.sess.run([self.train, self.loss,
                                                          self.l2dist, self.output,
-                                                         self.newimg], feed_dict={K.learning_phase(): 0})
+                                                         self.newimg], feed_dict={})
 
                 # print out the losses every 10%
                 # if iteration % (self.MAX_ITERATIONS // 10) == 0:
@@ -772,7 +772,7 @@ class CarliniFP_2vars:
                                        })
 
             # get clean logits of clean samples:
-            c_logits = self.sess.run([self.output], feed_dict={K.learning_phase(): 0})
+            c_logits = self.sess.run([self.output], feed_dict={})
 
             prev = 1e6
             for iteration in range(self.MAX_ITERATIONS):
@@ -780,7 +780,7 @@ class CarliniFP_2vars:
                 _, l, fps,l2s, scores, nimg = self.sess.run([self.train, self.loss,
                                                          self.fpdist,
                                                          self.l2dist, self.output,
-                                                         self.newimg], feed_dict={K.learning_phase(): 0})
+                                                         self.newimg], feed_dict={})
 
                 # print out the losses every 10%
                 # if iteration % (self.MAX_ITERATIONS // 10) == 0:
@@ -854,7 +854,7 @@ class CarliniFP_2vars:
                 _, l, fps, l2s, scores, nimg = self.sess.run([self.train, self.loss,
                                                               self.fpdist,
                                                          self.l2dist, self.output,
-                                                         self.newimg], feed_dict={K.learning_phase(): 0})
+                                                         self.newimg], feed_dict={})
 
                 # print out the losses every 10%
                 # if iteration % (self.MAX_ITERATIONS // 10) == 0:
