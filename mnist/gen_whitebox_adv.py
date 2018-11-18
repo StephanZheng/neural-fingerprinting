@@ -116,7 +116,7 @@ if(1>0):
 
     _, _, X_test, Y_test = get_data(dataset)
     num_samples = np.shape(X_test)[0]
-    num_rand_samples = 2
+    num_rand_samples = 20
     random_samples = np.random.randint(0,num_samples, num_rand_samples)
     new_X_test = np.zeros((num_rand_samples, 1, 28, 28))
     for i,sample_no in enumerate(random_samples):
@@ -127,6 +127,7 @@ if(1>0):
 
     f = open(os.path.join(args.log_dir,'Random_Test_%s_.p' % (dataset)),'w')
     print(os.path.join(args.log_dir,'Random_Test_%s_.p' % (dataset)))
+
     pickle.dump({"adv_input":new_X_test,"adv_labels":new_Y_test},f)
     f.close()
 
@@ -175,7 +176,7 @@ with tf.Session() as sess:
         transfer.pytorch_to_keras(pytorch_network, model.model)
         pytorch_network.eval()
         model = model.model
-        batch_size = 2
+        batch_size = 16
         craft_one_type(sess, model, new_X_test, new_Y_test, dataset, 'cw-l2',
                            batch_size, log_path=args.log_dir,
                            fp_path= args.fingerprint_dir  )
@@ -208,7 +209,7 @@ with tf.Session() as sess:
 
     if(args.attack in ['adapt-fgsm','adapt-all']):
         # FGSM, BIM-a, JSMA
-        #
+
         pytorch_network = Net()
         pytorch_network.load_state_dict(torch.load(args_ckpt))
         pytorch_network.eval()
@@ -270,9 +271,11 @@ with tf.Session() as sess:
         model = model.model
         if(args.attack == 'all'):
             for attack in ['fgsm','bim-a','bim-b','jsma']:
+
                 (X_adv,Y_adv) = craft_one_type(sess, model, new_X_test, new_Y_test, dataset, attack,
                                args.batch_size, log_path=args.log_dir)
         else:
+
 
             (X_adv,Y_adv) = craft_one_type(sess, model, new_X_test, new_Y_test, dataset, args.attack,
                                args.batch_size, log_path=args.log_dir)

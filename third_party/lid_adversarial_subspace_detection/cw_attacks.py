@@ -351,12 +351,15 @@ class CarliniFP:
         loss_fp = 0
         target_dys = tf.convert_to_tensor(fixed_dys)
         target_dys = (tf.gather(target_dys,pred_class))
+        logits_norm = tf.sqrt(tf.reduce_sum(tf.square(self.output), axis=1,
+                            keep_dims=True))
         norm_logits = self.output/tf.norm(self.output)
 
 
         for i in range(num_dx):
             logits_p = self.model(self.newimg + fixed_dxs[i])
-            logits_p_norm = logits_p/tf.norm(logits_p)
+            logits_p_norm = logits_p/tf.sqrt(tf.reduce_sum(tf.square(logits_p),
+                                axis=1, keep_dims=True))
             loss_fp = loss_fp + tf.losses.mean_squared_error((logits_p_norm - norm_logits),target_dys[:,i,:])
         #self appropriate fingerprint
         fp_y = fixed_dys
@@ -626,12 +629,14 @@ class CarliniFP_2vars:
         loss_fp = 0
         target_dys = tf.convert_to_tensor(fixed_dys)
         target_dys = (tf.gather(target_dys,pred_class))
-        norm_logits = self.output/tf.norm(self.output)
+        norm_logits = self.output/tf.sqrt(tf.reduce_sum(tf.square(self.output),
+                            axis=1, keep_dims=True))
 
 
         for i in range(num_dx):
             logits_p = self.model(self.newimg + fixed_dxs[i])
-            logits_p_norm = logits_p/tf.norm(logits_p)
+            logits_p_norm = logits_p/tf.sqrt(tf.reduce_sum(tf.square(logits_p),
+                                axis=1, keep_dims=True))
             loss_fp = loss_fp + tf.losses.mean_squared_error((logits_p_norm - norm_logits),target_dys[:,i,:])
         #self appropriate fingerprint
         fp_y = fixed_dys

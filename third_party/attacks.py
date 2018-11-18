@@ -77,11 +77,12 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
     elif attack == 'adapt-fgsm':
         # Adaptive FGSM attack
         print('Crafting fgsm adversarial samples...')
+
         X_adv = adaptive_fast_gradient_sign_method(
             sess, model, X, Y, eps=ATTACK_PARAMS[dataset]['eps'], clip_min=CLIP_MIN,
             clip_max=CLIP_MAX, batch_size=batch_size,
             log_dir = fp_path,
-            model_logits = model_logits,
+            model_logits = model_logits, dataset = dataset
         )
     elif attack == 'adapt-bim-b':
         # BIM attack
@@ -91,7 +92,7 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
             eps_iter=ATTACK_PARAMS[dataset]['eps_iter'], clip_min=CLIP_MIN,
             clip_max=CLIP_MAX, batch_size=batch_size,
             log_dir = fp_path,
-            model_logits = model_logits )
+            model_logits = model_logits,  dataset = dataset)
     elif attack in ['bim-a', 'bim-b']:
         # BIM attack
         print('Crafting %s adversarial samples...' % attack)
@@ -229,14 +230,14 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
             for j in range(binary_steps):
                 res = sess.run(X_adv_spsa,
                 feed_dict={X_input: np.expand_dims(X_i_norm, axis=0), Y_label: np.array([np.argmax(Y[i])]),
-                            K.learning_phase(): 0, alpha: ALPHA})
+                            alpha: ALPHA})
                 if(dataset == 'mnist'):
                     X_place = tf.placeholder(tf.float32, shape=[1, 1, 28, 28])
                 else:
                     X_place = tf.placeholder(tf.float32, shape=[1, 3, 32, 32])
                 pred = model(X_place)
-                model_op = sess.run(pred,feed_dict={X_place:res,
-                                               K.learning_phase(): 0})
+                model_op = sess.run(pred,feed_dict={X_place:res
+                                               })
 
                 if(not np.argmax(model_op) == np.argmax(Y[i,:])):
                     lb = ALPHA[0]
@@ -450,7 +451,7 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
 
     pickle.dump({"adv_input":X_adv,"adv_labels":Y},f)
     f.close()
-
+    _, acc = model.evaluate(X, Y, batch_size=batch_size, verbose=0)
     print("Model accuracy on the test set: %0.2f%%" % (100.0 * acc))
     l2_diff = np.linalg.norm(
         X_adv.reshape((len(X), -1)) -
@@ -459,9 +460,10 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
     ).mean()
     print("Average L-2 perturbation size of the %s attack: %0.2f" %
           (attack, l2_diff))
-    if("adapt" or "cw-fp" in args.attack):
+    if(("adapt" in attack) or ("cw-fp" in attack)):
         return (X, X_adv,Y)
     else:
+        print(Y.shape)
         return (X_adv,Y)
 
 def main(args):
