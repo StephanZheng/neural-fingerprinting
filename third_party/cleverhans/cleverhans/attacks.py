@@ -1553,10 +1553,12 @@ class MadryEtAl(Attack):
         target_dys = tf.convert_to_tensor(fixed_dys)
         target_dys = (tf.gather(target_dys,pred_class))
 
-        norm_logits = output/tf.norm(output)
+        norm_logits = output/tf.sqrt(tf.reduce_sum(tf.square(output), axis=1,
+                            keep_dims=True))
         for i in range(num_dx):
             logits_p = self.model.get_logits(adv_x + fixed_dxs[i])
-            logits_p_norm = logits_p/tf.norm(logits_p)
+            logits_p_norm = logits_p/tf.sqrt(tf.reduce_sum(tf.square(logits_p), axis=1,
+                                keep_dims=True))
             loss_fp = loss_fp + tf.losses.mean_squared_error(logits_p_norm,
                                                             target_dys[:,i,:])
         min_loss_fp = loss_fp
@@ -1576,10 +1578,12 @@ class MadryEtAl(Attack):
             num_dx = b
             target_dys = tf.convert_to_tensor(fixed_dys)
             target_dys = (tf.gather(target_dys,pred_class))
-            norm_logits = output/tf.norm(output)
+            norm_logits = output/tf.sqrt(tf.reduce_sum(tf.square(output),
+            axis=1, keep_dims=True))
             for i in range(num_dx):
                 logits_p = self.model.get_logits(adv_x + fixed_dxs[i])
-                logits_p_norm = logits_p/tf.norm(logits_p)
+                logits_p_norm = logits_p/tf.sqrt(tf.reduce_sum(tf.square(logits_p),
+                axis=1, keep_dims=True))
                 loss_fp = loss_fp + tf.losses.mean_squared_error(logits_p_norm,
                                                                 target_dys[:,i,:])
             loss_fp_list.append(loss_fp)
@@ -1735,7 +1739,7 @@ class FastFeatureAdversaries(Attack):
         grad, = tf.gradients(loss, adv_x)
 
         # Multiply by constant epsilon
-        normalized_grad = 
+        #normalized_grad = grad/tf.no
         scaled_signed_grad = self.eps_iter * tf.sign(grad)
 
         # Add perturbation to original example to obtain adversarial example
@@ -1906,10 +1910,12 @@ class SPSA(Attack):
         num_dx = b
         target_dys = tf.convert_to_tensor(fixed_dys)
         target_dys = target_dys[pred_class[0],:,:]
-        norm_logits = output/tf.norm(output)
+        norm_logits = output/tf.sqrt(tf.reduce_sum(tf.square(output), axis=1,
+                            keep_dims=True))
         for i in range(num_dx):
             logits_p = self.model.get_logits(x + fixed_dxs[i])
-            logits_p_norm = logits_p/tf.norm(logits_p)
+            logits_p_norm = logits_p/tf.sqrt(tf.reduce_sum(tf.square(logits_p),
+            axis=1, keep_dims=True))
             d_logits = (logits_p_norm-norm_logits)[0,:]
             loss_fp = loss_fp + tf.losses.mean_squared_error(d_logits,
                                                             target_dys[i,:])
