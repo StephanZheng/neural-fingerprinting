@@ -20,7 +20,7 @@ import pickle
 
 def adaptive_fgsm(x, predictions, eps, clip_min=None, clip_max=None,
                   log_dir=None, y=None, model_logits = None,
-                  alpha = None
+                  alpha = None, dataset=None
                   ):
     """
     Computes symbolic TF tensor for the adversarial samples. This must
@@ -57,11 +57,13 @@ def adaptive_fgsm(x, predictions, eps, clip_min=None, clip_max=None,
     num_dx = b
     target_dys = tf.convert_to_tensor(fixed_dys)
     target_dys = (tf.gather(target_dys,pred_class))
-    norm_logits = output/tf.norm(output)
+    norms = tf.sqrt(tf.reduce_sum(tf.square(output), axis=1, keep_dims=True))
+    norm_logits = output/norms
 
     for i in range(num_dx):
         logits_p = model_logits(x + fixed_dxs[i])
-        logits_p_norm = logits_p/tf.norm(logits_p)
+        p_norm = tf.sqrt(tf.reduce_sum(tf.square(logits_p), axis=1, keep_dims=True))
+        logits_p_norm = logits_p/p_norm
         loss_fp = loss_fp + tf.losses.mean_squared_error((logits_p_norm - norm_logits),target_dys[:,i,:])
         #self appropriate fingerprint
 
@@ -95,7 +97,7 @@ def adaptive_fgsm(x, predictions, eps, clip_min=None, clip_max=None,
 
 def adaptive_fast_gradient_sign_method(sess, model, X, Y, eps, clip_min=None,
                               clip_max=None, batch_size=256, log_dir = None,
-                                       model_logits = None, binary_steps = 12,
+                                       model_logits = None, binary_steps = 2,
                                         dataset="cifar"):
     """
     TODO
@@ -119,7 +121,6 @@ def adaptive_fast_gradient_sign_method(sess, model, X, Y, eps, clip_min=None,
     lb = 0.0*np.ones(num_samples)
     Best_X_adv = None
     for i in range(binary_steps):
-        print(i)
         adv_x = adaptive_fgsm(
             x, model(x), eps=eps,
             clip_min=clip_min,
@@ -128,17 +129,18 @@ def adaptive_fast_gradient_sign_method(sess, model, X, Y, eps, clip_min=None,
             model_logits = model_logits,
             alpha = alpha
         )
-        X_adv, = batch_eval(
+
+        X_adv = batch_eval(
             sess, [x, y, alpha], [adv_x],
-            [X, Y, ALPHA], feed={K.learning_phase(): 0},
+            [X, Y, ALPHA], feed={},
             args={'batch_size': batch_size}
         )
-
+        X_adv = np.array(X_adv[0])
         if(i==0):
             Best_X_adv = X_adv
 
         ALPHA, Best_X_adv = binary_refinement(sess,Best_X_adv,
-                      X_adv, Y, ALPHA, ub, lb, model,dataset)
+                      X_adv, Y, ALPHA, ub, lb, model, dataset)
 
     return Best_X_adv
 
@@ -146,6 +148,7 @@ def adaptive_fast_gradient_sign_method(sess, model, X, Y, eps, clip_min=None,
 def binary_refinement(sess,Best_X_adv,
                       X_adv, Y, ALPHA, ub, lb, model, dataset='cifar'):
     num_samples = np.shape(X_adv)[0]
+    print(dataset)
     if(dataset=="mnist"):
         X_place = tf.placeholder(tf.float32, shape=[1, 1, 28, 28])
     else:
@@ -153,8 +156,7 @@ def binary_refinement(sess,Best_X_adv,
 
     pred = model(X_place)
     for i in range(num_samples):
-        logits_op = sess.run(pred,feed_dict={X_place:X_adv[i:i+1,:,:,:],
-                                           K.learning_phase(): 0})
+        logits_op = sess.run(pred,feed_dict={X_place:X_adv[i:i+1,:,:,:]})
         if(not np.argmax(logits_op) == np.argmax(Y[i,:])):
             # Success, increase alpha
             Best_X_adv[i,:,:,:] = X_adv[i,:,:,]
@@ -167,7 +169,7 @@ def binary_refinement(sess,Best_X_adv,
 def adaptive_basic_iterative_method(sess, model, X, Y, eps, eps_iter, nb_iter=50,
                            clip_min=None, clip_max=None, batch_size=256,
                            log_dir = None, model_logits = None,
-                                     binary_steps =9, attack_type = "bim-b",
+                                     binary_steps =2, attack_type = "bim-b",
                                      dataset="cifar"):
     """
     TODO

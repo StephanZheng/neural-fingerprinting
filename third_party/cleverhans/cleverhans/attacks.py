@@ -1584,7 +1584,7 @@ class MadryEtAl(Attack):
                                                                 target_dys[:,i,:])
             loss_fp_list.append(loss_fp)
         min_loss_fp = tf.reduce_min(loss_fp_list)
-        
+
 
         loss = loss - alpha*min_loss_fp
         grad, = tf.gradients(loss, adv_x)
@@ -1735,6 +1735,7 @@ class FastFeatureAdversaries(Attack):
         grad, = tf.gradients(loss, adv_x)
 
         # Multiply by constant epsilon
+        normalized_grad = 
         scaled_signed_grad = self.eps_iter * tf.sign(grad)
 
         # Add perturbation to original example to obtain adversarial example

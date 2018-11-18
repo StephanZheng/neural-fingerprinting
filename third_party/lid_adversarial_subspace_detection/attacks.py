@@ -187,7 +187,7 @@ def fast_gradient_sign_method(sess, model, X, Y, eps, clip_min=None,
     )
     X_adv, = batch_eval(
         sess, [x, y], [adv_x],
-        [X, Y], feed={K.learning_phase(): 0},
+        [X, Y], feed={},
         args={'batch_size': batch_size}
     )
     return X_adv
@@ -283,4 +283,3 @@ def saliency_map_method(sess, model, X, Y, theta, gamma, clip_min=None,
         )
 
     return X_adv
-
