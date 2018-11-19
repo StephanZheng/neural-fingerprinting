@@ -273,7 +273,7 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
         model.layers[0].set_weights([original_weights,original_biases])
         #Revert adv shift
         X_adv = X_adv - 0.5
-
+        X = X - 0.5 #Not used but just for logging purposes
     elif attack=='adapt-pgd':
         binary_steps = 1
         rand_starts = 2
@@ -323,6 +323,7 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
         #Correct model for input shift
 
         X = X + 0.5 #shift input to make it >=0
+
         _, acc = model.evaluate(X, Y, batch_size=batch_size, verbose=0)
         print("Model accuracy on the test set: %0.2f%%" % (100.0 * acc))
         # check accuracy post correction of input and model
@@ -418,6 +419,8 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
         model.layers[0].set_weights([original_weights,original_biases])
         #Revert adv shift
         X_adv = X_adv - 0.5
+        X = X - 0.5 #Not used but just for logging purposes
+
         pass
 
     if("adapt" in attack or "fp" in attack or "spsa" in attack):
