@@ -1559,7 +1559,7 @@ class MadryEtAl(Attack):
             logits_p = self.model.get_logits(adv_x + fixed_dxs[i])
             logits_p_norm = logits_p/tf.sqrt(tf.reduce_sum(tf.square(logits_p), axis=1,
                                 keep_dims=True))
-            loss_fp = loss_fp + 
+            loss_fp = loss_fp + \
                 tf.losses.mean_squared_error((logits_p_norm - norm_logits),target_dys[:,i,:])
 
         min_loss_fp = loss_fp
@@ -1585,7 +1585,7 @@ class MadryEtAl(Attack):
                 logits_p = self.model.get_logits(adv_x + fixed_dxs[i])
                 logits_p_norm = logits_p/tf.sqrt(tf.reduce_sum(tf.square(logits_p),
                 axis=1, keep_dims=True))
-                loss_fp = loss_fp + 
+                loss_fp = loss_fp + \
                     tf.losses.mean_squared_error((logits_p_norm - norm_logits),target_dys[:,i,:])
             loss_fp_list.append(loss_fp)
         min_loss_fp = tf.reduce_min(loss_fp_list)
