@@ -1543,7 +1543,7 @@ class MadryEtAl(Attack):
         fixed_dxs = self.fixed_dxs
         output = logits
         ## Main version
-        """
+        
         alpha = self.alpha
         #y = tf.Print(y, [y])
         pred_class = tf.argmax(y,axis=1)
@@ -1589,7 +1589,7 @@ class MadryEtAl(Attack):
                     tf.losses.mean_squared_error((logits_p_norm - norm_logits),target_dys[:,i,:])
             loss_fp_list.append(loss_fp)
         min_loss_fp = tf.reduce_min(loss_fp_list)
-
+        """
 
         loss = loss - alpha*min_loss_fp
         grad, = tf.gradients(loss, adv_x)
