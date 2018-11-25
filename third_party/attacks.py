@@ -211,7 +211,7 @@ def craft_one_type(sess, model, X, Y, dataset, attack, batch_size, log_path=None
             'early_stop_loss_threshold': None,
             'is_targeted': False,
             'is_debug': False,
-            'spsa_samples': real_batch_size,
+            'spsa_samples': 1, ## Note that we are only feeding 1 sample
         }
         X_adv_spsa = spsa.generate(X_input, alpha=alpha, y=Y_label, fp_path=fp_path, **spsa_params)
 
