@@ -163,7 +163,8 @@ for epoch in range(1, args.epochs + 1):
             print("Saving termination epoch number in {}".format(os.path.join(args.log_dir, "termination_epoch")))
         break
     elif(epoch == args.epochs):
+        term_epoch = np.argmin(val_losses) + 1
         with open(os.path.join(args.log_dir, "termination_epoch"), "wb") as f:
-            f.write(str(epoch)+"\n")
+            f.write(str(term_epoch)+"\n")
             print("Saving termination epoch number in {}".format(os.path.join(args.log_dir, "termination_epoch")))
 
