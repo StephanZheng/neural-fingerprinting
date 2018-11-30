@@ -26,7 +26,7 @@ fi
 
 
 if [ "$1" = "cifar" ]; then
-NUM_EPOCHS=50
+NUM_EPOCHS=80
 fi
 
 # Loop over grid of hyperparameters
@@ -47,7 +47,7 @@ python2 $1/train_fingerprint.py \
 --batch-size 128 \
 --test-batch-size 128 \
 --epochs $NUM_EPOCHS \
---lr 0.001 \
+--lr 0.001 \  # Use lower lr for mnist! Cifar this should be fine as is.
 --momentum 0.9 \
 --seed 0 \
 --log-interval 10 \
