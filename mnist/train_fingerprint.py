@@ -84,11 +84,11 @@ pickle.dump(fp_dx, open(os.path.join(args.log_dir, "fp_inputs_dx.pkl"), "wb"))
 
 # Target ys
 # num_target_classes x num_perturb x num_class
-fp_target = -0.2357*np.ones((args.num_class, args.num_dx, args.num_class))
+fp_target = 0.2357*np.ones((args.num_class, args.num_dx, args.num_class))
 
 for j in range(args.num_dx):
     for i in range(args.num_class):
-        fp_target[i,j,i] = 0.7
+        fp_target[i,j,i] = -0.7
 
 pickle.dump(fp_target, open(os.path.join(args.log_dir, "fp_outputs.pkl"), "wb"))
 
