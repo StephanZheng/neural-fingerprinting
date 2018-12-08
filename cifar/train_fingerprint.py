@@ -110,11 +110,11 @@ fp_inputs_pkl.close()
 
 # Target ys
 # num_target_classes x num_perturb x num_class
-fp_target = -0.254*np.ones((args.num_class, args.num_dx, args.num_class))
+fp_target = 0.254*np.ones((args.num_class, args.num_dx, args.num_class))
 
 for j in range(args.num_dx):
     for i in range(args.num_class):
-        fp_target[i,j,i] = 0.6
+        fp_target[i,j,i] = - 0.7
 
 fp_target = 1.5*fp_target
 fp_target_pkl = open(os.path.join(args.log_dir, "fp_outputs.pkl"), "wb")
