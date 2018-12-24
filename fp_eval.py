@@ -35,7 +35,7 @@ def get_class_of(x):
     # return model(x)
     pass
 
-def model_with_fingerprint(model, x, fp, args):
+def model_with_fingerprint(model, x, fp,  args):
     # x : B x C x W x H with B = 1
     # Check y' = f(x+dx) for all dx
 
