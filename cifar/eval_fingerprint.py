@@ -69,8 +69,10 @@ if args.cuda:
 fixed_dxs = []
 fixed_dys = []
 fp_list = []
+model_list = []
 ckpt_path = "/tmp/logs/neural_fingerprint/cifar/models/"
 for i in (os.listdir(ckpt_path)):
+
     new_path = ckpt_path + i
     fixed_dxs = pickle.load(open(os.path.join(new_path, "fp_inputs_dx.pkl"), "rb"))
     fixed_dys = pickle.load(open(os.path.join(new_path, "fp_outputs.pkl"), "rb"))
@@ -79,6 +81,21 @@ for i in (os.listdir(ckpt_path)):
     fp.dxs = fixed_dxs
     fp.dys = fixed_dys
     fp_list += [fp]
+
+
+    with open(os.path.join(new_path, "termination_epoch"), "rb") as f:
+        epoch_num = int(f.read())
+        ckpt_path = os.path.join(new_path,"ckpt")
+        ckpt_path = os.path.join(ckpt_path,"state_dict-ep_"+str(epoch_num)+
+					".pth")
+    model = Net()
+    print("Loading ckpt", ckpt_path)
+    model.load_state_dict(torch.load(ckpt_path))
+    model.train(False)
+    model.eval()
+    if args.cuda:
+        model.cuda()
+    model_list += [model]
 
 fp = fp_list
 
@@ -122,13 +139,7 @@ from model import CW2_Net as Net
 
 print("Eval using model", Net)
 
-model = Net()
-print("Loading ckpt", args.ckpt)
-model.load_state_dict(torch.load(args.ckpt))
-model.train(False)
-model.eval()
-if args.cuda:
-    model.cuda()
+
 
 
 print("Args:", args)
@@ -150,7 +161,7 @@ results = {}
 data_loader = test_loader
 ds_name = "test"
 print("Dataset", ds_name)
-test_results_by_tau, test_stats_by_tau = fp_eval.eval_with_fingerprints(model, data_loader, ds_name, fp, reject_thresholds, None, args)
+test_results_by_tau, test_stats_by_tau = fp_eval.eval_with_fingerprints(model_list, data_loader, ds_name, fp_list, reject_thresholds, None, args)
 results["test"] = test_results_by_tau
 
 for data_loader, ds_name in zip(loaders, names):

@@ -35,69 +35,72 @@ def get_class_of(x):
     # return model(x)
     pass
 
-def model_with_fingerprint(model, x, fp,  args):
+def model_with_fingerprint(model_list, x, fp_list,  args):
     # x : B x C x W x H with B = 1
     # Check y' = f(x+dx) for all dx
 
     x = util.t2var(x, args.cuda)
 
     assert x.size()[0] == 1 # batch
-
+    diff_norm_net = 0
     # Get perturbations for predicted class
+    for i,model in enumerate(model_list):
+        fp = fp_list[i]
+        logits = model(x)
+        log_yhat = F.log_softmax(logits)
 
-    logits = model(x)
-    log_yhat = F.log_softmax(logits)
+        yhat = F.softmax(logits)
+        y_class = yhat.data.max(1, keepdim=True)[1]
+        y_class = util.t2np(y_class, args.cuda)[0,0]
 
-    yhat = F.softmax(logits)
-    y_class = yhat.data.max(1, keepdim=True)[1]
-    y_class = util.t2np(y_class, args.cuda)[0,0]
+        # fixed_dxs : num_perturb x C x W x H
+        fixed_dxs = util.np2var(np.concatenate(fp.dxs, axis=0), cuda=args.cuda)
 
-    # fixed_dxs : num_perturb x C x W x H
-    fixed_dxs = util.np2var(np.concatenate(fp.dxs, axis=0), cuda=args.cuda)
+        # cmopute x + dx : broadcast! num_perturb x C x W x H
+        xp = x + fixed_dxs
 
-    # cmopute x + dx : broadcast! num_perturb x C x W x H
-    xp = x + fixed_dxs
+        # if args.debug: print("xp", xp.size(), "x", x.size(), "fixed_dxs", fixed_dxs.size())
 
-    # if args.debug: print("xp", xp.size(), "x", x.size(), "fixed_dxs", fixed_dxs.size())
+        logits_p = model(xp)
+        log_yhat_p  = F.log_softmax(logits_p)
+        yhat_p = F.softmax(logits_p)
 
-    logits_p = model(xp)
-    log_yhat_p  = F.log_softmax(logits_p)
-    yhat_p = F.softmax(logits_p)
+        if args.debug:
+          print("logits_p", logits_p, "log_yhat_p", log_yhat_p)
+          print("yhat_p", yhat_p)
 
-    if args.debug:
-      print("logits_p", logits_p, "log_yhat_p", log_yhat_p)
-      print("yhat_p", yhat_p)
+        # compute f(x + dx) : num_perturb x num_class
 
-    # compute f(x + dx) : num_perturb x num_class
+        # print("get fixed_dys : num_target_class x num_perturb x num_class: for each target class, a set of perturbations and desired outputs (num_class).")
+        fixed_dys = util.np2var(fp.dys, cuda=args.cuda)
 
-    # print("get fixed_dys : num_target_class x num_perturb x num_class: for each target class, a set of perturbations and desired outputs (num_class).")
-    fixed_dys = util.np2var(fp.dys, cuda=args.cuda)
+        logits_norm = logits * torch.norm(logits, 2, 1, keepdim=True).reciprocal().expand(1, args.num_class)
+        logits_p_norm = logits_p * torch.norm(logits_p, 2, 1, keepdim=True).reciprocal().expand(args.num_dx, args.num_class)
 
-    logits_norm = logits * torch.norm(logits, 2, 1, keepdim=True).reciprocal().expand(1, args.num_class)
-    logits_p_norm = logits_p * torch.norm(logits_p, 2, 1, keepdim=True).reciprocal().expand(args.num_dx, args.num_class)
+        if args.debug:
+          print("logits_norm", logits_norm)
+          print("logits_p_norm", logits_p_norm.size(), torch.norm(logits_p_norm, 2, 1))
 
-    if args.debug:
-      print("logits_norm", logits_norm)
-      print("logits_p_norm", logits_p_norm.size(), torch.norm(logits_p_norm, 2, 1))
-
-    diff_logits_p = logits_p_norm - logits_norm
-    #diff_logits_p = diff_logits_p * torch.norm(diff_logits_p, 2, 1, keepdim=True).reciprocal().expand(args.num_dx, args.num_class)
-
-
-    diff = fixed_dys - diff_logits_p
-
-    if args.debug:
-      print("diff_logits_p", diff_logits_p)
-      print("fixed_dys", fixed_dys)
-      print("diff", diff)
+        diff_logits_p = logits_p_norm - logits_norm
+        #diff_logits_p = diff_logits_p * torch.norm(diff_logits_p, 2, 1, keepdim=True).reciprocal().expand(args.num_dx, args.num_class)
 
 
-    diff_norm = torch.norm(diff, 2, dim=2)
+        diff = fixed_dys - diff_logits_p
 
-    if args.debug: print("diff_norm (over dim 2 of diff)", diff_norm)
+        if args.debug:
+          print("diff_logits_p", diff_logits_p)
+          print("fixed_dys", fixed_dys)
+          print("diff", diff)
 
-    diff_norm = torch.mean(diff_norm, dim=1)
 
+        diff_norm = torch.norm(diff, 2, dim=2)
+
+        if args.debug: print("diff_norm (over dim 2 of diff)", diff_norm)
+
+        diff_norm = torch.mean(diff_norm, dim=1)
+        diff_norm_net = diff_norm_net + diff_norm
+
+    diff_norm = diff_norm_net/(1.0*len(model_list))
     if args.debug: print("diff_norm after mean", diff_norm)
 
     y_class_with_fp = diff_norm.data.min(0, keepdim=True)[1]
