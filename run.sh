@@ -50,7 +50,7 @@ python2 $1/train_fingerprint.py \
 --batch-size 128 \
 --test-batch-size 128 \
 --epochs $NUM_EPOCHS \
---lr 0.001 \  # Use lower lr for mnist! Cifar this should be fine as is.
+--lr 0.001 \
 --momentum 0.9 \
 --seed 0 \
 --log-interval 10 \

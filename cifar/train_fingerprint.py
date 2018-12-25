@@ -137,7 +137,7 @@ model = Net()
 if args.cuda:
     model.cuda()
 
-optimizer = optim.SGD(model.parameters(), lr=args.lr, weight_decay=1e-6, momentum=args.momentum)
+optimizer = optim.SGD(model.parameters(), lr=args.lr, weight_decay=1e-4, momentum=args.momentum)
 
 print("Args:", args)
 
