@@ -26,6 +26,7 @@ import util
 import custom_datasets
 import fp_eval
 from fingerprint import Fingerprints
+from model import CW2_Net as Net
 
 # Training settings
 parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Example')
@@ -70,10 +71,10 @@ fixed_dxs = []
 fixed_dys = []
 fp_list = []
 model_list = []
-ckpt_path = "/tmp/logs/neural_fingerprint/cifar/models/"
-for i in (os.listdir(ckpt_path)):
+og_path = "/tmp/logs/neural_fingerprint/cifar/models/"
+for i in (os.listdir(og_path)):
 
-    new_path = ckpt_path + i
+    new_path = og_path + i
     fixed_dxs = pickle.load(open(os.path.join(new_path, "fp_inputs_dx.pkl"), "rb"))
     fixed_dys = pickle.load(open(os.path.join(new_path, "fp_outputs.pkl"), "rb"))
 
@@ -122,7 +123,7 @@ random_loader = torch.utils.data.DataLoader(
     custom_datasets.RandomCIFAR10(args.data_dir, transform=transform),
     batch_size=args.batch_size, shuffle=False, **kwargs)
 """
-list_advs = ["adapt-fgsm", "cw-fp"] # ['fgsm']
+list_advs = ["cw-fp"] # ['fgsm']
 # List of attacks, copy from run_search
 dataset = 'cifar'
 list_adv_loader=[]
@@ -169,7 +170,7 @@ for data_loader, ds_name in zip(loaders, names):
     if ds_name == "test": continue
     print("Dataset", ds_name)
 
-    results_by_tau, stats_by_tau = fp_eval.eval_with_fingerprints(model, data_loader, ds_name, fp, reject_thresholds, test_stats_by_tau, args)
+    results_by_tau, stats_by_tau = fp_eval.eval_with_fingerprints(model_list, data_loader, ds_name, fp_list, reject_thresholds, test_stats_by_tau, args)
     results[ds_name] = results_by_tau
 
 # Get precision / recall where positive examples = adversarials, negative examples = real inputs.
