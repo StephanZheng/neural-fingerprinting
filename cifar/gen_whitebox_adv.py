@@ -110,7 +110,7 @@ with tf.Session() as sess:
     # Sample random test data
     _, _, X_test, Y_test = get_data(dataset)
     num_samples = np.shape(X_test)[0]
-    num_rand_samples = 1328
+    num_rand_samples = 32
     random_samples = np.random.randint(0,num_samples, num_rand_samples)
     new_X_test = X_test[random_samples,:,:,:]
     new_Y_test = Y_test[random_samples,:]

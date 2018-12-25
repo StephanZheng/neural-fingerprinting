@@ -11,19 +11,23 @@ import sys
 import tensorflow as tf
 import numpy as np
 from tqdm import tqdm
+import torch
 from cleverhans.utils import other_classes
 import keras.backend as K
 K.set_image_data_format('channels_first')
 import pickle
 import os
+from tf_model import Model
+from nn_transfer import transfer, util
+from model import CW2_Net as Net
 
 # settings for C&W L2 attack
 L2_BINARY_SEARCH_STEPS = 9
-L2_BINARY_SEARCH_STEPS_1 = 9  # number of times to adjust the constant with binary search
-L2_BINARY_SEARCH_STEPS_2 = 5
+L2_BINARY_SEARCH_STEPS_1 = 5  # number of times to adjust the constant with binary search
+L2_BINARY_SEARCH_STEPS_2 = 3
 L2_MAX_ITERATIONS = 1000    # number of iterations to perform gradient descent
 L2_ABORT_EARLY = True       # if we stop improving, abort gradient descent early
-L2_LEARNING_RATE = 1e-2     # larger values converge faster to less accurate results
+L2_LEARNING_RATE = 1e-3     # larger values converge faster to less accurate results
 L2_TARGETED = True          # should we target one specific class? or just be wrong?
 L2_CONFIDENCE = 0           # how strong the adversarial example should be
 L2_INITIAL_CONST = 1e-3    # the initial constant c to pick as a first guess
@@ -627,32 +631,45 @@ class CarliniFP_2vars:
         [a,b,c] = np.shape(fixed_dys)
         num_dx = b
         loss_fp = 0
-        ckpt_path = "/tmp/logs/neural_fingerprint/cifar/ckpt/"
-        for i in (os.listdir(ckpt_path)):
+        og_path = "/tmp/logs/neural_fingerprint/cifar/models/"
+ 
+        for i in (os.listdir(og_path)):
 
-            new_path = ckpt_path + i
-            file = open(os.path.join(new_path, "termination_epoch"), "rb")
-            print(file.read())
-            exit()
-            self.output = num_model(self.newimg)
+            new_path = og_path + i
+            with open(os.path.join(new_path, "termination_epoch"), "rb") as f:
+                epoch_num = int(f.read())
+                ckpt_path = os.path.join(new_path,"ckpt")
+                ckpt_path = os.path.join(ckpt_path,"state_dict-ep_"+str(epoch_num)+
+					".pth") 
+                
+		pytorch_network = Net()
+                pytorch_network.load_state_dict(torch.load(ckpt_path))
+                pytorch_network.eval()
+                num_model = Model(torch_model=pytorch_network)
+                keras_network = num_model.model
+                transfer.pytorch_to_keras(pytorch_network, num_model.model)
+                pytorch_network.eval()
+                num_model = num_model.model
+                #print(epoch_num)
+      
+                self.output = num_model(self.newimg)
 
-            fixed_dxs = pickle.load(open(os.path.join(new_path, "fp_inputs_dx.pkl"), "rb"))
-            fixed_dys = pickle.load(open(os.path.join(new_path, "fp_outputs.pkl"), "rb"))
+                fixed_dxs = pickle.load(open(os.path.join(new_path, "fp_inputs_dx.pkl"), "rb"))
+                fixed_dys = pickle.load(open(os.path.join(new_path, "fp_outputs.pkl"), "rb"))
 
 
-            target_dys = tf.convert_to_tensor(fixed_dys)
-            target_dys = (tf.gather(target_dys,pred_class))
-            norm_logits = self.output/tf.sqrt(tf.reduce_sum(tf.square(self.output),
+                target_dys = tf.convert_to_tensor(fixed_dys)
+                target_dys = (tf.gather(target_dys,pred_class))
+                norm_logits = self.output/tf.sqrt(tf.reduce_sum(tf.square(self.output),
                                 axis=1, keep_dims=True))
 
 
-            for i in range(num_dx):
-                logits_p = self.model(self.newimg + fixed_dxs[i])
-                logits_p_norm = logits_p/tf.sqrt(tf.reduce_sum(tf.square(logits_p),
+                for i in range(num_dx):
+                    logits_p = self.model(self.newimg + fixed_dxs[i])
+                    logits_p_norm = logits_p/tf.sqrt(tf.reduce_sum(tf.square(logits_p),
                                     axis=1, keep_dims=True))
-                loss_fp = loss_fp + tf.losses.mean_squared_error((logits_p_norm - norm_logits),target_dys[:,i,:])
+                    loss_fp = loss_fp + tf.losses.mean_squared_error((logits_p_norm - norm_logits),target_dys[:,i,:])
             #self appropriate fingerprint
-        fp_y = fixed_dys
 
         # distance to the input data
         self.l2dist = tf.reduce_sum(tf.square(self.newimg - tf.tanh(self.timg) / 2), [1, 2, 3])

@@ -13,7 +13,7 @@ from models import *
 from model import *
 
 class Model(object):
-  def __init__(self, torch_model=CW2_Net,softmax=True):
+  def __init__(self, torch_model=CW2_Net,softmax=True, var_name=""):
     self.x_input = tf.placeholder(tf.float32, shape = [None, 784])
     self.y_input = tf.placeholder(tf.int64, shape = [None])
 
@@ -25,22 +25,22 @@ class Model(object):
       model.add(Conv2D(32, kernel_size=(3, 3),
                        activation='relu',
                        input_shape=(3, 32, 32),
-                       name='conv1'))
-      model.add(BatchNormalization(axis=1,name='bnm1',momentum=0.1))
-      model.add(Conv2D(64, (3, 3),activation='relu',name='conv2'))
-      model.add(BatchNormalization(axis=1,name='bnm2',momentum=0.1))
+                       name='conv1'+var_name))
+      model.add(BatchNormalization(axis=1, momentum=0.1, name='bnm1'+var_name))
+      model.add(Conv2D(64, (3, 3),activation='relu',name='conv2'+var_name))
+      model.add(BatchNormalization(axis=1, momentum=0.1, name='bnm2'+var_name))
       model.add(MaxPooling2D(pool_size=(2, 2)))
-      model.add(Conv2D(128, (3, 3), activation='relu', name='conv3'))
-      model.add(BatchNormalization(axis=1,name='bnm3',momentum=0.1))
-      model.add(Conv2D(128, (3, 3), activation='relu', name='conv4'))
-      model.add(BatchNormalization(axis=1,name='bnm4',momentum=0.1))
+      model.add(Conv2D(128, (3, 3), activation='relu', name='conv3'+var_name))
+      model.add(BatchNormalization(axis=1, momentum=0.1, name='bnm3'+var_name))
+      model.add(Conv2D(128, (3, 3), activation='relu', name='conv4'+var_name))
+      model.add(BatchNormalization(axis=1, momentum=0.1, name='bnm4'+var_name))
       model.add(MaxPooling2D(pool_size=(2, 2)))
       model.add(Flatten())
-      model.add(Dense(256, activation='relu', name='fc1'))
-      model.add(BatchNormalization(axis=-1,name='bnm5',momentum=0.1))
-      model.add(Dense(256, activation='relu', name='fc2'))
-      model.add(BatchNormalization(axis=1,name='bnm6',momentum=0.1))
-      model.add(Dense(10, activation=None, name='fc3'))
+      model.add(Dense(256, activation='relu', name='fc1'+var_name))
+      model.add(BatchNormalization(axis=-1,name='bnm5'+var_name,momentum=0.1))
+      model.add(Dense(256, activation='relu', name='fc2'+var_name))
+      model.add(BatchNormalization(axis=1,name='bnm6'+var_name,momentum=0.1))
+      model.add(Dense(10, activation=None, name='fc3'+var_name))
 
     elif(isinstance(torch_model,LeNet)):
       model = Sequential()
