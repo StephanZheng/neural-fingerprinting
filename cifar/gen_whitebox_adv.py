@@ -148,8 +148,11 @@ with tf.Session() as sess:
                            batch_size, log_path=args.log_dir,
                            fp_path= args.fingerprint_dir)
 
+    ckpt_path = "/tmp/logs/neural_fingerprint/cifar/ckpt/"
+
 
     if(args.attack == 'cw-l2' or args.attack == 'all'):
+
         pytorch_network = Net()
         model = Model(torch_model=pytorch_network,softmax=False)
         pytorch_network.load_state_dict(torch.load(args.ckpt, map_location=lambda storage, loc: storage))

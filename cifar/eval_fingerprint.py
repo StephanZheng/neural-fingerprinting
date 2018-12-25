@@ -15,6 +15,7 @@ import random
 import scipy as sp
 import sys
 import torch
+import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -52,7 +53,7 @@ parser.add_argument('--eps', type=float, default=0.1)
 parser.add_argument('--num-dx', type=int, default=5)
 parser.add_argument('--num-class', type=int, default=10)
 parser.add_argument('--tau', default="0.1,0.2")
-
+parser.add_argument('--num-ensembles', default=2)
 parser.add_argument('--name', default="dataset-name")
 
 util.add_boolean_argument(parser, "verbose", default=False)
@@ -64,6 +65,22 @@ args.cuda = not args.no_cuda and torch.cuda.is_available()
 torch.manual_seed(args.seed)
 if args.cuda:
     torch.cuda.manual_seed(args.seed)
+
+fixed_dxs = []
+fixed_dys = []
+fp_list = []
+ckpt_path = "/tmp/logs/neural_fingerprint/cifar/models/"
+for i in (os.listdir(ckpt_path)):
+    new_path = ckpt_path + i
+    fixed_dxs = pickle.load(open(os.path.join(new_path, "fp_inputs_dx.pkl"), "rb"))
+    fixed_dys = pickle.load(open(os.path.join(new_path, "fp_outputs.pkl"), "rb"))
+
+    fp = Fingerprints()
+    fp.dxs = fixed_dxs
+    fp.dys = fixed_dys
+    fp_list += [fp]
+
+fp = fp_list
 
 transform = transforms.Compose([transforms.ToTensor(),
                                 transforms.Normalize((0.5, 0.5, 0.5),
@@ -116,12 +133,6 @@ if args.cuda:
 
 print("Args:", args)
 
-fixed_dxs = pickle.load(open(os.path.join(args.fingerprint_dir, "fp_inputs_dx.pkl"), "rb"))
-fixed_dys = pickle.load(open(os.path.join(args.fingerprint_dir, "fp_outputs.pkl"), "rb"))
-
-fp = Fingerprints()
-fp.dxs = fixed_dxs
-fp.dys = fixed_dys
 
 loaders = [test_loader]
 loaders.extend(list_adv_loader)

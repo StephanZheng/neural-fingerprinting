@@ -538,7 +538,7 @@ class CarliniFP:
 # This is a class to generate whitebox attacks that have knowledge of the chosen fingerprints
 # using multiple lagrange variables.
 class CarliniFP_2vars:
-    def __init__(self, sess, model, image_size, num_channels, num_labels, batch_size=100,
+    def __init__(self, sess, models, image_size, num_channels, num_labels, batch_size=100,
                  confidence=L2_CONFIDENCE, targeted=L2_TARGETED, learning_rate=L2_LEARNING_RATE,
                  binary_search_steps=L2_BINARY_SEARCH_STEPS_1,
                  binary_search_steps_2 = L2_BINARY_SEARCH_STEPS_2,
@@ -571,7 +571,7 @@ class CarliniFP_2vars:
           importance of distance and confidence. If binary_search_steps is large,
           the initial constant is not important.
         """
-        self.model = model
+        self.model = models[0]
         self.sess = sess
         self.image_size = image_size
         self.num_channels = num_channels
@@ -627,18 +627,31 @@ class CarliniFP_2vars:
         [a,b,c] = np.shape(fixed_dys)
         num_dx = b
         loss_fp = 0
-        target_dys = tf.convert_to_tensor(fixed_dys)
-        target_dys = (tf.gather(target_dys,pred_class))
-        norm_logits = self.output/tf.sqrt(tf.reduce_sum(tf.square(self.output),
-                            axis=1, keep_dims=True))
+        ckpt_path = "/tmp/logs/neural_fingerprint/cifar/ckpt/"
+        for i in (os.listdir(ckpt_path)):
+
+            new_path = ckpt_path + i
+            file = open(os.path.join(new_path, "termination_epoch"), "rb")
+            print(file.read())
+            exit()
+            self.output = num_model(self.newimg)
+
+            fixed_dxs = pickle.load(open(os.path.join(new_path, "fp_inputs_dx.pkl"), "rb"))
+            fixed_dys = pickle.load(open(os.path.join(new_path, "fp_outputs.pkl"), "rb"))
 
 
-        for i in range(num_dx):
-            logits_p = self.model(self.newimg + fixed_dxs[i])
-            logits_p_norm = logits_p/tf.sqrt(tf.reduce_sum(tf.square(logits_p),
+            target_dys = tf.convert_to_tensor(fixed_dys)
+            target_dys = (tf.gather(target_dys,pred_class))
+            norm_logits = self.output/tf.sqrt(tf.reduce_sum(tf.square(self.output),
                                 axis=1, keep_dims=True))
-            loss_fp = loss_fp + tf.losses.mean_squared_error((logits_p_norm - norm_logits),target_dys[:,i,:])
-        #self appropriate fingerprint
+
+
+            for i in range(num_dx):
+                logits_p = self.model(self.newimg + fixed_dxs[i])
+                logits_p_norm = logits_p/tf.sqrt(tf.reduce_sum(tf.square(logits_p),
+                                    axis=1, keep_dims=True))
+                loss_fp = loss_fp + tf.losses.mean_squared_error((logits_p_norm - norm_logits),target_dys[:,i,:])
+            #self appropriate fingerprint
         fp_y = fixed_dys
 
         # distance to the input data
