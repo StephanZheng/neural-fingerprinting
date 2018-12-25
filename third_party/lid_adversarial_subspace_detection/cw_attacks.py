@@ -571,7 +571,7 @@ class CarliniFP_2vars:
           importance of distance and confidence. If binary_search_steps is large,
           the initial constant is not important.
         """
-        self.model = models[0]
+        self.model = models
         self.sess = sess
         self.image_size = image_size
         self.num_channels = num_channels
