@@ -1,0 +1,3 @@
+[submodule "/home/tianweiy/Documents/deep_learning/AE/NFP/neural-fingerprinting/src/mister_ed"]
+	path = /home/tianweiy/Documents/deep_learning/AE/NFP/neural-fingerprinting/src/mister_ed
+	url = https://github.com/revbucket/mister_ed.git
