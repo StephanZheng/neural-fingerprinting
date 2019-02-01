@@ -211,7 +211,7 @@ def test_advs():
 
     # build loss object
     loss = NFLoss(classifier_net, num_dx=30, num_class=10, fp_dx=fixed_dxs, fp_target=fixed_dys,
-                   normalizer=normalizer)
+                  normalizer=normalizer)
 
     # restore saved images
     adv_image_path = os.path.join(args.log_dir, "adv_images.npy")
@@ -235,13 +235,13 @@ def test_advs():
         l_adv = loss.forward(adv, labels=None)
         dis_adv.append(l_adv.cpu().detach().numpy())
 
-    mean_adv = sum(dis_adv) / len(dis_adv)
+    mean_adv = np.mean(dis_adv)
     min_adv = min(dis_adv)
     max_adv = max(dis_adv)
     std_adv = np.std(dis_adv)
 
     # because sometimes not all images are adverarial, we compute real distance wrt all correctly classified images
-    mean_real = sum(dis_real) / len(dis_real)
+    mean_real = np.mean(dis_real)
     min_real = min(dis_real)
     max_real = max(dis_real)
     std_real = np.std(dis_real)
@@ -255,8 +255,8 @@ def test_advs():
     print("STD REAL", std_real)
     print("STD ADV", std_adv)
 
-    label_0 = np.zeros(len(dis_real))
-    label_1 = np.ones(len(dis_adv))
+    label_0 = np.zeros(num_images)
+    label_1 = np.ones(num_images)
 
     labels = np.concatenate((label_0, label_1))
     scores = np.concatenate((dis_real, dis_adv))
