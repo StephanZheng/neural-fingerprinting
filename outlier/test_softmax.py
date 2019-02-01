@@ -1,3 +1,4 @@
+from __future__ import print_function
 import sys
 
 # add the system path here!
@@ -10,7 +11,7 @@ import torch
 
 from sklearn.metrics import roc_auc_score
 from outlier.model import PreActResNet18
-from outlier.out_utils import get_dataset, softmax_score, evaluation
+from util import get_dataset, softmax_score, ood_evaluation
 
 parser = argparse.ArgumentParser(description='CIFAR10 Outlier Detection Experiment')
 parser.add_argument('--model_path', type=str, help='path to the model')
@@ -162,7 +163,7 @@ fpr = 0.
 total = 0.
 
 for tau in reject_thresholds:
-    true_positive, false_positive, true_negative, false_negative = evaluation(dis_out, dis_in, tau)
+    true_positive, false_positive, true_negative, false_negative = ood_evaluation(dis_out, dis_in, tau)
 
     tpr = true_positive / np.float(true_positive + false_negative)
 

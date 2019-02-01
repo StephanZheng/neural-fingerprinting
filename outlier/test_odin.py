@@ -1,3 +1,4 @@
+from __future__ import print_function
 import sys
 
 # add the system path here!
@@ -10,7 +11,7 @@ import torch
 
 from sklearn.metrics import roc_auc_score
 from outlier.model import PreActResNet18
-from outlier.out_utils import get_dataset, evaluation, find_most_likely, build_adv_examples, odin_score
+from util import get_dataset, ood_evaluation, find_most_likely, build_fgsm_adv_examples, odin_score
 
 parser = argparse.ArgumentParser(description='CIFAR10 Outlier Detection Experiment')
 parser.add_argument('--model_path', type=str, help='path to the model')
@@ -38,7 +39,6 @@ size = args.size
 assert size > 1000  # we remove the first 1k images
 
 num_class = args.num_class
-
 
 torch.manual_seed(1)
 if args.cuda:
@@ -90,8 +90,8 @@ for idx, in_data in enumerate(in_dataset, 0):
     pred_in = find_most_likely(classifier_net, normalizer, in_image)
 
     # input pre-processing
-    in_image = build_adv_examples(classifier_net, normalizer, in_image, pred_in,
-                                  step_size=args.eps)
+    in_image = build_fgsm_adv_examples(classifier_net, normalizer, in_image, pred_in,
+                                       step_size=args.eps)
 
     with torch.no_grad():
         in_dis = odin_score(in_image, classifier_net, normalizer, args.temp_scale)
@@ -116,8 +116,8 @@ for idx, out_data in enumerate(out_dataset, 0):
     pred_out = find_most_likely(classifier_net, normalizer, out_image)
 
     # input pre-processing
-    out_image = build_adv_examples(classifier_net, normalizer, out_image, pred_out,
-                                   step_size=args.eps)
+    out_image = build_fgsm_adv_examples(classifier_net, normalizer, out_image, pred_out,
+                                        step_size=args.eps)
 
     with torch.no_grad():
         out_dis = odin_score(out_image, classifier_net, normalizer, args.temp_scale)
@@ -173,7 +173,7 @@ fpr = 0.
 total = 0.
 
 for tau in reject_thresholds:
-    true_positive, false_positive, true_negative, false_negative = evaluation(dis_out, dis_in, tau)
+    true_positive, false_positive, true_negative, false_negative = ood_evaluation(dis_out, dis_in, tau)
 
     tpr = true_positive / np.float(true_positive + false_negative)
 
